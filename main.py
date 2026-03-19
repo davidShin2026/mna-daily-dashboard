@@ -25,13 +25,12 @@ except Exception as e:
     print(f"모델 검색 중 에러 발생: {e}")
     raise e
 
-# 2. (핵심 수정) 검색어 족쇄 제거 및 유연한 키워드 조합
-query = "(인수합병 OR 지분투자 OR 매각 OR M&A) (반도체 OR 바이오 OR 헬스케어 OR 배터리 OR 2차전지) when:3m"
-encoded_query = urllib.parse.quote(query)
-rss_url = f"https://news.google.com/rss/search?q={encoded_query}&hl=ko&gl=KR&ceid=KR:ko"
-
-response = requests.get(rss_url)
-root = ET.fromstring(response.text)
+# 2. (핵심 해결책) 복잡한 괄호를 풀고, 섹터별로 3번 나누어 개별 검색
+queries = [
+    "인수합병 OR 지분투자 OR 매각 반도체 when:3m",
+    "인수합병 OR 지분투자 OR 매각 바이오 OR 제약 OR 헬스케어 when:3m",
+    "인수합병 OR 지분투자 OR 매각 배터리 OR 2차전지 when:3m"
+]
 
 now_utc = datetime.now(timezone.utc)
 cutoff_date = now_utc - timedelta(days=90) # 정확히 90일 전 날짜
@@ -39,33 +38,47 @@ cutoff_date = now_utc - timedelta(days=90) # 정확히 90일 전 날짜
 news_context = ""
 valid_count = 0
 
-# 3. (핵심 수정) 1차 수집량을 60개로 늘려 넉넉하게 확보 후 필터링
-for item in root.findall('.//item')[:60]:
-    if valid_count >= 30: # 최종적으로 AI에게 분석시킬 알짜배기 기사는 30개면 충분함
-        break
-        
-    pubDate_str = item.find('pubDate').text if item.find('pubDate') is not None else ''
+# 3개의 그물을 차례대로 던져서 기사를 수집합니다.
+for query in queries:
+    encoded_query = urllib.parse.quote(query)
+    rss_url = f"https://news.google.com/rss/search?q={encoded_query}&hl=ko&gl=KR&ceid=KR:ko"
     
-    # 90일 필터링 적용
     try:
-        pubDate_dt = parsedate_to_datetime(pubDate_str)
-        if pubDate_dt < cutoff_date:
-            continue
-    except:
-        pass # 날짜 파싱 에러 시 버리지 않고 살려둠 (유연성 확보)
+        response = requests.get(rss_url)
+        root = ET.fromstring(response.text)
         
-    title = item.find('title').text
-    link = item.find('link').text
-    news_context += f"{valid_count+1}. 제목: {title}\n일자: {pubDate_str}\n링크: {link}\n\n"
-    valid_count += 1
+        # 각 분야별로 최대 15개씩 골고루 긁어옵니다.
+        for item in root.findall('.//item')[:15]:
+            if valid_count >= 40: # 전체 기사가 40개가 넘어가면 중단
+                break
+                
+            pubDate_str = item.find('pubDate').text if item.find('pubDate') is not None else ''
+            
+            # 90일 필터링 적용 (시간대 에러 방지 처리 추가)
+            try:
+                pubDate_dt = parsedate_to_datetime(pubDate_str)
+                if pubDate_dt.tzinfo is None:
+                    pubDate_dt = pubDate_dt.replace(tzinfo=timezone.utc)
+                if pubDate_dt < cutoff_date:
+                    continue # 90일 지난 오래된 기사는 버림
+            except:
+                pass 
+                
+            title = item.find('title').text
+            link = item.find('link').text
+            news_context += f"{valid_count+1}. 제목: {title}\n일자: {pubDate_str}\n링크: {link}\n\n"
+            valid_count += 1
+    except Exception as e:
+        print(f"RSS 검색 에러: {e}")
+        continue
 
 if not news_context.strip():
-    deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 최근 3개월 내 뉴스 검색 결과가 없습니다. (검색어 조건 완화 필요)</h3></div>"
+    deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 최근 3개월 내 뉴스 검색 결과가 없습니다.</h3></div>"
 else:
-    # 4. AI 프롬프트
+    # 3. AI 프롬프트 (요청하신 복수 링크 및 깐깐한 양식 통제)
     prompt = f"""
     당신은 글로벌 IB의 탑티어 M&A 리서치 애널리스트입니다. 
-    아래 뉴스를 바탕으로 핵심 섹터의 M&A 및 지분 투자 동향을 요약해 주세요.
+    아래 뉴스를 바탕으로 국내 핵심 섹터의 M&A 및 지분 투자 동향을 요약해 주세요.
 
     [뉴스 데이터]
     {news_context}
@@ -98,7 +111,7 @@ else:
     result = model.generate_content(prompt)
     deal_content = result.text.replace('```html', '').replace('```', '').strip()
 
-# 5. HTML 디자인 템플릿 (필터링 유지)
+# 4. HTML 디자인 템플릿 (필터링 스크립트 포함)
 kst = pytz.timezone('Asia/Seoul')
 today_str = datetime.now(kst).strftime("%Y년 %m월 %d일")
 
