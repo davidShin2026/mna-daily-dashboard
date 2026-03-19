@@ -11,7 +11,6 @@
         h1 { color: #1a365d; text-align: center; margin-bottom: 5px; }
         .date { text-align: center; color: #718096; margin-bottom: 25px; font-weight: bold; font-size: 0.9em; }
         
-        /* 필터 버튼 디자인 */
         .filter-container { text-align: center; margin-bottom: 30px; }
         .filter-btn {
             background-color: #e2e8f0; border: none; padding: 8px 18px; margin: 0 5px; 
@@ -21,7 +20,6 @@
         .filter-btn:hover { background-color: #cbd5e1; }
         .filter-btn.active { background-color: #1a365d; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
 
-        /* 카드 디자인 및 뱃지 */
         .deal-card { background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; transition: display 0.3s; border: 1px solid #e2e8f0; }
         .card-header { display: flex; align-items: center; border-bottom: 2px solid #edf2f7; padding-bottom: 12px; margin-bottom: 15px; }
         .category-badge { background-color: #ebf8fa; color: #319795; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: 800; margin-right: 15px; border: 1px solid #b2f5ea; }
@@ -29,8 +27,7 @@
         
         ul { line-height: 1.7; }
         
-        /* 기사 원문 링크 강조 */
-        .source-link { color: #dd6b20; text-decoration: none; font-weight: bold; background-color: #feebc8; padding: 2px 8px; border-radius: 6px; }
+        .source-link { color: #dd6b20; text-decoration: none; font-weight: bold; background-color: #feebc8; padding: 3px 10px; border-radius: 6px; margin-right: 5px; font-size: 0.9em; display: inline-block; margin-bottom: 3px; }
         .source-link:hover { background-color: #fbd38d; text-decoration: underline; }
     </style>
 </head>
@@ -48,185 +45,16 @@
         </div>
 
         <div id="deal-list">
-            글로벌 IB의 탑티어 M&A 리서치 애널리스트로서, 제공해주신 뉴스 데이터를 기반으로 국내 핵심 섹터의 M&A 및 지분 투자 동향을 분석하여 보고드립니다. 전반적으로 바이오 섹터에서 활발한 M&A 및 지분 투자가 관찰되며, 특히 국내 제약사들의 바이오벤처 인수 및 생산 인프라 확충 움직임, 그리고 대기업의 해외 바이오 기술 투자 모색이 두드러집니다. 반도체 섹터에서는 중국 자본의 국내 기업 투자 관심이 확인되었습니다.
-
----
-
-<div class="deal-card" data-category="바이오">
-  <div class="card-header">
-    <span class="category-badge">바이오</span>
-    <h3>🎯 국내 바이오벤처 M&A 동향</h3>
-  </div>
-  <ul>
-    <li><strong>관련 주체:</strong> 국내 제약사 (인수 모색), 국내 바이오벤처 (매물)</li>
-    <li><strong>진행 상태:</strong> M&A 본격 시동/추진</li>
-    <li><strong>예상 규모:</strong> 미상</li>
-    <li><strong>기사 원문:</strong> <a href="https://news.google.com/rss/articles/CBMibkFVX3lxTE1EZW5kbmRjM2JpUWUwblBGTTVpMHlJQy1DVFUyQUwzWThTNVRqUk1JVDFpTHpUV2I2YlhfQ3hHdkxNVHk1dDVQd19CTnhPNnl1OFZOMzlVSjdTQ2FiMGltdkxDQ3BfSmpkbUVjaUpn?oc=5" target="_blank" class="source-link">바로가기 (클릭)</a></li>
-  </ul>
-  <h4>주요 내용 요약</h4>
-  <ul><li>현금 유동성이 풍부한 국내 제약사들이 넘쳐나는 바이오벤처 매물을 대상으로 M&A를 본격적으로 시도하고 있습니다.</li><li>재무 부담 및 성장 한계에 직면한 중소형 제약사들이 M&A 시장의 주요 매물로 등장하며 시장 활성화를 이끌고 있습니다.</li></ul>
-</div>
-
-<div class="deal-card" data-category="바이오">
-  <div class="card-header">
-    <span class="category-badge">바이오</span>
-    <h3>🎯 日 시니어케어 회사 지분투자 및 파트너십</h3>
-  </div>
-  <ul>
-    <li><strong>관련 주체:</strong> HLB그룹 (지분 투자), 日 시니어케어 회사 (투자 대상)</li>
-    <li><strong>진행 상태:</strong> 지분 투자 및 파트너십 체결</li>
-    <li><strong>예상 규모:</strong> 미상</li>
-    <li><strong>기사 원문:</strong> <a href="https://news.google.com/rss/articles/CBMiV0FVX3lxTE43RkZXNnB6czV3dG5sTTlMTFBVMXQzdlNEQ1Vtc1M4aTB4YkZOQ0ZhbnQ2T0dEMTRFaTRmbFYxeERrMF90c28ydmJES1pNbU80VGplcmNodw?oc=5" target="_blank" class="source-link">바로가기 (클릭)</a></li>
-  </ul>
-  <h4>주요 내용 요약</h4>
-  <ul><li>HLB그룹이 일본 시니어케어 회사에 지분 투자를 단행하고, 시니어 헬스케어 분야에서의 전략적 파트너십을 구축했습니다.</li><li>이는 바이오 기업의 헬스케어 서비스 분야로의 사업 확장을 시사합니다.</li></ul>
-</div>
-
-<div class="deal-card" data-category="반도체">
-  <div class="card-header">
-    <span class="category-badge">반도체</span>
-    <h3>🎯 국내 반도체 기업 M&A 동향</h3>
-  </div>
-  <ul>
-    <li><strong>관련 주체:</strong> 중국 반도체 업계 (인수 추진), 국내 반도체 기업 (매물/투자 대상)</li>
-    <li><strong>진행 상태:</strong> 인수 추진/관심 표명</li>
-    <li><strong>예상 규모:</strong> 미상</li>
-    <li><strong>기사 원문:</strong> <a href="https://news.google.com/rss/articles/CBMiZkFVX3lxTFA0aWlHX0YxWUFKMXBhTW14TFZxLUh2aGpubW5NMkhpWkQxQVU3ZHJPWWgtNVVkNmUySTJOMEVCU0tqSkswLTV0UmlnZFZoSTVILUJheDJQRnlDdzQ1aWlCQ0M4RVhFQQ?oc=5" target="_blank" class="source-link">바로가기 (클릭)</a></li>
-  </ul>
-  <h4>주요 내용 요약</h4>
-  <ul><li>중국 반도체 업계가 국내 반도체 기업에 대한 M&A 관심을 확대하며 투자 기회를 적극적으로 모색하고 있습니다.</li><li>전반적인 M&A 시장에서 반도체 및 IT 분야에 대한 투자자들의 관심이 집중될 것으로 예상됩니다.</li></ul>
-</div>
-
-<div class="deal-card" data-category="바이오">
-  <div class="card-header">
-    <span class="category-badge">바이오</span>
-    <h3>🎯 유노비아 신약 파이프라인 매각 동향</h3>
-  </div>
-  <ul>
-    <li><strong>관련 주체:</strong> 유노비아 (매각), 모기업 (인수)</li>
-    <li><strong>진행 상태:</strong> 신약 매각 완료</li>
-    <li><strong>예상 규모:</strong> 94억 원</li>
-    <li><strong>기사 원문:</strong> <a href="https://news.google.com/rss/articles/CBMiXEFVX3lxTE9BRExwRFhpNFNVLVA5ckRZcjRXSmxzQVFJbVhwRkowS244aEw3NFVRU19JNVlZRFlrN3hxOHgydWZpcHJwbldNb2VNOHhXLU9mU0dKVUpGZEFENk94?oc=5" target="_blank" class="source-link">바로가기 (클릭)</a></li>
-  </ul>
-  <h4>주요 내용 요약</h4>
-  <ul><li>유노비아가 모기업에 신약 파이프라인을 94억 원에 매각하며 R&D 독립 경영을 위한 발판을 마련했습니다.</li><li>이는 기업의 선택과 집중 전략의 일환으로, 핵심 역량에 집중하고 비핵심 자산을 매각하는 추세를 보여줍니다.</li></ul>
-</div>
-
-<div class="deal-card" data-category="바이오">
-  <div class="card-header">
-    <span class="category-badge">바이오</span>
-    <h3>🎯 에이비엘바이오 글로벌 빅파마 지분투자</h3>
-  </div>
-  <ul>
-    <li><strong>관련 주체:</strong> 에이비엘바이오 (투자), 글로벌 빅파마 (피투자사)</li>
-    <li><strong>진행 상태:</strong> 지분 투자 확정</li>
-    <li><strong>예상 규모:</strong> 미상</li>
-    <li><strong>기사 원문:</strong> <a href="https://news.google.com/rss/articles/CBMiUkFVX3lxTFBYTTJTdDlQZE1oUWQ2SFpYZ245c1JpUjd4Z0Z6cUNQM1dXTWVlSy16Rkg4dEtSRjVyRFUtdm1mS2EyQzVnNmxYUlh5UDdvUTBSeUE?oc=5" target="_blank" class="source-link">바로가기 (클릭)</a></li>
-  </ul>
-  <h4>주요 내용 요약</h4>
-  <ul><li>에이비엘바이오가 국내 바이오사 최초로 글로벌 빅파마에 지분 투자를 단행하며 전략적 파트너십을 강화했습니다.</li><li>이는 K-바이오 기업들이 단순히 기술수출을 넘어 지분 투자와 공동 개발을 통해 글로벌 신뢰를 확보하는 새로운 경향을 보여줍니다.</li></ul>
-</div>
-
-<div class="deal-card" data-category="바이오">
-  <div class="card-header">
-    <span class="category-badge">바이오</span>
-    <h3>🎯 삼성 바이오 투자회사 신설 및 M&A 추진</h3>
-  </div>
-  <ul>
-    <li><strong>관련 주체:</strong> 삼성 (바이오 투자회사 신설, M&A 주체), 바이오 기업 (투자/인수 대상)</li>
-    <li><strong>진행 상태:</strong> 투자회사 신설 및 M&A 추진</li>
-    <li><strong>예상 규모:</strong> 미상</li>
-    <li><strong>기사 원문:</strong> <a href="https://news.google.com/rss/articles/CBMiWkFVX3lxTE1IeVVRcGJXWVJLM3QwREJQZzdzTHl3alhPUHp2RHRPeVgxSjEzUXN2SWlRS3NOTEdiNXQ3MmVjcmhERE5KZklZckltSF9NVlp6a2ZEbWpLTklzQdIBVEFVX3lxTE5Xam9OZWRLdHNZaERPV00tSDgwVGhrWkhLRnRoRnQ4clY1aVdKLTBTeXVBOVFPY3RGQ1FZN1RDZFdLenR3OHBkdjJMb2RqR3hBcmYxVQ?oc=5" target="_blank" class="source-link">바로가기 (클릭)</a></li>
-  </ul>
-  <h4>주요 내용 요약</h4>
-  <ul><li>삼성이 바이오 투자회사를 신설하여 신약 개발 및 관련 기업 M&A에 적극적으로 나설 계획을 밝히며, 바이오 분야 투자 확대 의지를 표명했습니다.</li><li>삼성과 SK 등 국내 대기업들이 바이오 분야에서 성장 동력을 찾기 위해 M&A를 적극적으로 모색하고 있으며, 특히 미국 바이오 기업에 대한 관심이 높은 것으로 분석됩니다.</li></ul>
-</div>
-
-<div class="deal-card" data-category="바이오">
-  <div class="card-header">
-    <span class="category-badge">바이오</span>
-    <h3>🎯 뷰노 '골연령 분석 AI' 솔루션 매각</h3>
-  </div>
-  <ul>
-    <li><strong>관련 주체:</strong> 뷰노 (매각), 마이허브 (인수)</li>
-    <li><strong>진행 상태:</strong> 매각 완료</li>
-    <li><strong>예상 규모:</strong> 27억 원</li>
-    <li><strong>기사 원문:</strong> <a href="https://news.google.com/rss/articles/CBMiV0FVX3lxTE1KamZ5WkpOOXRrMW13dGtwR0hsZWV6Qk1sVUFybXR0RUpKU3A1YlZaTk05VHI5SzBmUHcyZkRyUWFYc3h6cTBaeW1UUFVxS1EyM1p6cFhGOA?oc=5" target="_blank" class="source-link">바로가기 (클릭)</a></li>
-  </ul>
-  <h4>주요 내용 요약</h4>
-  <ul><li>뷰노가 마이허브에 '골연령 분석 AI' 솔루션을 27억 원에 매각하며 특정 기술 자산의 거래를 성사시켰습니다.</li><li>이는 바이오 헬스케어 분야에서 AI 기술 자산에 대한 인수합병 및 매각이 활발하게 이루어질 수 있음을 보여줍니다.</li></ul>
-</div>
-
-<div class="deal-card" data-category="바이오">
-  <div class="card-header">
-    <span class="category-badge">바이오</span>
-    <h3>🎯 부광약품 유니온제약 인수 추진</h3>
-  </div>
-  <ul>
-    <li><strong>관련 주체:</strong> 부광약품 (인수 추진), 유니온제약 (피인수)</li>
-    <li><strong>진행 상태:</strong> 인수 추진</li>
-    <li><strong>예상 규모:</strong> 미상</li>
-    <li><strong>기사 원문:</strong> <a href="https://news.google.com/rss/articles/CBMigwFBVV95cUxPQUMzVWRubW00ZXg5N0c5RDFfN3NqeWdTNFlvS2pDNjBnTXVKSmFYOXlEenFVMW1MV2lYZ1RDQnd5OExqZVdUYmdwcklRaElGUGNuWXZPR195emhYdlNFZV9QMlB3VHlCeGZydkxTS2hOQzlVZjFRQ182dUtDWDNLeUU4dw?oc=5" target="_blank" class="source-link">바로가기 (클릭)</a></li>
-  </ul>
-  <h4>주요 내용 요약</h4>
-  <ul><li>부광약품이 유니온제약의 공장 인수를 시작으로 경영권까지 확보하려는 움직임을 보이고 있습니다.</li><li>이는 제약업계 M&A 트렌드가 R&D 역량뿐만 아니라 생산 인프라 확충 및 신사업 진출을 위한 통합적 접근으로 변화하고 있음을 시사합니다.</li></ul>
-</div>
-
-<div class="deal-card" data-category="바이오">
-  <div class="card-header">
-    <span class="category-badge">바이오</span>
-    <h3>🎯 보령 대형 자산 매입</h3>
-  </div>
-  <ul>
-    <li><strong>관련 주체:</strong> 보령 (매입)</li>
-    <li><strong>진행 상태:</strong> 자산 매입 (확정)</li>
-    <li><strong>예상 규모:</strong> 대형 M&A 규모 (미상)</li>
-    <li><strong>기사 원문:</strong> <a href="https://news.google.com/rss/articles/CBMiTkFVX3lxTFBNd3c3TExCUU83LWFKUFpMbXNUOXBmVHQ1eUw3VW5qeTBxU05nMGVYRjRjRGw0YUQ5eUNHNk5hMlVEbEtwQjFqUXAwOFBSUQ?oc=5" target="_blank" class="source-link">바로가기 (클릭)</a></li>
-  </ul>
-  <h4>주요 내용 요약</h4>
-  <ul><li>보령이 대형 M&A에 준하는 규모의 자산을 매입하며 성장을 위한 과감한 투자를 단행했습니다.</li><li>이는 기업들이 미래 성장 동력 확보를 위해 적극적으로 시장 기회를 모색하고 있음을 보여줍니다.</li></ul>
-</div>
-
-<div class="deal-card" data-category="바이오">
-  <div class="card-header">
-    <span class="category-badge">바이오</span>
-    <h3>🎯 에이비엘바이오 지분 매각 루머</h3>
-  </div>
-  <ul>
-    <li><strong>관련 주체:</strong> 에이비엘바이오 (매각 검토/루머)</li>
-    <li><strong>진행 상태:</strong> 대규모 지분 매각 루머</li>
-    <li><strong>예상 규모:</strong> 미상</li>
-    <li><strong>기사 원문:</strong> <a href="https://news.google.com/rss/articles/CBMia0FVX3lxTE43VmRUbWNpdzZuSWJjaWdIUUlYVjk1MFhGU2pXMndXTFdCaG0xV2poZGhBTk5nNGkxNDREQkNxYUV5dHBReXpub2xkaXFSNEdFLTI1ZmhJZmdseGpERmFwSkpRaG9pTElMOE1V?oc=5" target="_blank" class="source-link">바로가기 (클릭)</a></li>
-  </ul>
-  <h4>주요 내용 요약</h4>
-  <ul><li>에이비엘바이오가 대규모 지분 매각 루머에 휩싸이며 시장의 관심과 주가 변동성이 확대되고 있습니다.</li><li>이는 바이오 섹터에서 지분 투자 및 매각을 통한 자금 확보 및 구조 재편에 대한 시장의 높은 기대를 반영합니다.</li></ul>
-</div>
-
-<div class="deal-card" data-category="바이오">
-  <div class="card-header">
-    <span class="category-badge">바이오</span>
-    <h3>🎯 한국비엔씨 美 레이오스 지분 투자</h3>
-  </div>
-  <ul>
-    <li><strong>관련 주체:</strong> 한국비엔씨 (투자), 美 레이오스 (피투자사)</li>
-    <li><strong>진행 상태:</strong> 지분 투자 계약 체결</li>
-    <li><strong>예상 규모:</strong> 미상</li>
-    <li><strong>기사 원문:</strong> <a href="https://news.google.com/rss/articles/CBMia0FVX3lxTE1iMjZ1dHBhWU9HVVc2dnJHcUhDTy13RUtQTzVJQndZYVNXY2dPRHJQOGNibnl5eHRhV1B4R2hvRlBwNU0zMjVUS0VFTWtHSWZSQWtlZ3dhdWVpRnZJZ1F4czJxcTZYMkYteGlR?oc=5" target="_blank" class="source-link">바로가기 (클릭)</a></li>
-  </ul>
-  <h4>주요 내용 요약</h4>
-  <ul><li>한국비엔씨가 지방분해 주사를 개발하는 미국 기업 레이오스에 지분 투자 계약을 체결했습니다.</li><li>이는 국내 기업들이 해외 혁신 기술을 확보하기 위한 전략적 지분 투자를 활발히 진행하고 있음을 보여줍니다.</li></ul>
-</div>
+            <div class='deal-card'><h3 style='color:#e53e3e;'>🎯 최근 3개월 내 뉴스 검색 결과가 없습니다.</h3></div>
         </div>
     </div>
 
     <script>
         function filterDeals(category) {
-            // 1. 눌린 버튼에 색상(active) 입히기
             const buttons = document.querySelectorAll('.filter-btn');
             buttons.forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
 
-            // 2. 카테고리에 맞는 카드만 보여주고 나머지는 숨기기
             const cards = document.querySelectorAll('.deal-card');
             cards.forEach(card => {
                 const cardCategory = card.getAttribute('data-category');
