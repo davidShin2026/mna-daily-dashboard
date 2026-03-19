@@ -56,7 +56,7 @@ else:
     </div>
     """
 
-    model = genai.GenerativeModel('gemini-1.5-pro')
+    model = genai.GenerativeModel('gemini-1.5-flash')
     result = model.generate_content(prompt)
     deal_content = result.text
 
