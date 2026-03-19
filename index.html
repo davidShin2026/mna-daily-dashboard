@@ -3,39 +3,22 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Domestic M&A Daily Dashboard</title>
+    <title>Domestic M&A Dashboard</title>
     <style>
-        body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f7f6; padding: 20px; color: #333; }
+        body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f7f6; padding: 20px; }
         .container { max-width: 900px; margin: auto; }
-        h1 { color: #1a365d; text-align: center; margin-bottom: 5px; }
-        .date { text-align: center; color: #718096; margin-bottom: 25px; font-weight: bold; font-size: 0.9em; }
-        
         .filter-container { text-align: center; margin-bottom: 30px; }
-        .filter-btn {
-            background-color: #e2e8f0; border: none; padding: 8px 18px; margin: 0 5px; 
-            border-radius: 20px; cursor: pointer; font-weight: bold; color: #4a5568;
-            transition: all 0.2s ease-in-out; font-size: 0.9em;
-        }
-        .filter-btn:hover { background-color: #cbd5e1; }
-        .filter-btn.active { background-color: #1a365d; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-
-        .deal-card { background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; transition: display 0.3s; border: 1px solid #e2e8f0; }
-        .card-header { display: flex; align-items: center; border-bottom: 2px solid #edf2f7; padding-bottom: 12px; margin-bottom: 15px; }
-        .category-badge { background-color: #ebf8fa; color: #319795; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: 800; margin-right: 15px; border: 1px solid #b2f5ea; }
-        .deal-card h3 { color: #2d3748; margin: 0; font-size: 1.3em; }
-        
-        ul { line-height: 1.7; }
-        
-        .source-link { color: #dd6b20; text-decoration: none; font-weight: bold; background-color: #feebc8; padding: 3px 10px; border-radius: 6px; margin-right: 5px; font-size: 0.9em; display: inline-block; margin-bottom: 3px; }
-        .source-link:hover { background-color: #fbd38d; text-decoration: underline; }
+        .filter-btn { background: #e2e8f0; border: none; padding: 10px 20px; margin: 5px; border-radius: 20px; cursor: pointer; font-weight: bold; }
+        .filter-btn.active { background: #1a365d; color: white; }
+        .deal-card { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; border-left: 5px solid #2b6cb0; }
+        .category-badge { background: #ebf8fa; color: #319795; padding: 3px 10px; border-radius: 10px; font-size: 0.8em; font-weight: bold; }
+        .source-link { color: #dd6b20; text-decoration: none; font-weight: bold; margin-right: 10px; background: #feebc8; padding: 2px 5px; border-radius: 4px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📊 Domestic M&A Daily Dashboard</h1>
-        <div class="date">업데이트: 2026년 03월 19일 오전 8:10</div>
-        
+        <h1 style="text-align:center;">📊 Domestic M&A Daily Dashboard</h1>
+        <p style="text-align:center; font-weight:bold;">업데이트: 2026년 03월 19일</p>
         <div class="filter-container">
             <button class="filter-btn active" onclick="filterDeals('전체')">전체보기</button>
             <button class="filter-btn" onclick="filterDeals('반도체')">반도체</button>
@@ -43,26 +26,113 @@
             <button class="filter-btn" onclick="filterDeals('배터리')">배터리</button>
             <button class="filter-btn" onclick="filterDeals('기타')">기타</button>
         </div>
+        <div id="deal-list"><div class="deal-card" data-category="반도체">
+  <div class="card-header">
+    <span class="category-badge">반도체</span>
+    <h3>🎯 두산그룹의 SK실트론 인수 및 두산로보틱스 지분 매각 소식</h3>
+  </div>
+  <ul>
+    <li><strong>주체:</strong> 두산그룹 (SK실트론 인수), 두산 (두산로보틱스 지분 매각)</li>
+    <li><strong>상태:</strong> 진행 중 (인수 추진, 지분 매각 추진)</li>
+    <li><strong>링크:</strong> <a href="https://news.google.com/rss/articles/CBMiWkFVX3lxTE9yZ09lS2p5Y0xIcEFkbkpFVlJyQkR4cEtxZnVBaUhaY3QxRGxrdUpVMmJQbGhZdkpuVXRYVEtfNERiaE5aZUoxUjd1VmZwMjdvaEQwbzRENWlPUdIBVEFVX3lxTE9jenVSSUh0UFJzNEJqdm5ickFxdmVTR1BRRVctaGxJQUVGT1kwOWl1bE9zLW15T09fVFhMTndpUU5PVC0zV1F5YmVTa19qYXBuX0xneQ?oc=5" target="_blank" class="source-link">한국경제</a> <a href="https://news.google.com/rss/articles/CBMiZkFVX3lxTE56UDEzbXAzNlo3VjdDLVlWb2RXcVVVVkZQWUhzT2FBeHQ2a042cDR0al8yek9jQmhxOGk5OVVXbHZvcWNsZXBMcWthejZmbXpzT2I5UlFzSURGT01CMzZqUWVVU0lPUQ?oc=5" target="_blank" class="source-link">디일렉</a> <a href="https://news.google.com/rss/articles/CBMiUEFVX3lxTFBxM1g0dXF0UksxUlhzd0lvRUJRWnVJMll4Ny02VGppODVGb1Rvcm1FWjVyaDM5dk1pOHpJYXRYTnpwSkROMHpndXJuSzJIaFJu?oc=5" target="_blank" class="source-link">톱데일리</a></li>
+  </ul>
+  <h4>핵심 요약</h4>
+  <ul>
+    <li>두산그룹은 SK실트론 인수를 추진하며 반도체 전·후공정 라인업을 완성하려 하고 있습니다.</li>
+    <li>SK실트론 인수 자금 약 9,470억~9,500억원을 마련하기 위해 두산로보틱스 지분 일부 매각을 추진 중입니다.</li>
+    <li>관련하여 SK실트론 M&A 시계가 다시 돌고 있다는 분석이 나옵니다.</li>
+  </ul>
+</div>
 
-        <div id="deal-list">
-            <div class='deal-card'><h3 style='color:#e53e3e;'>🎯 최근 3개월 내 뉴스 검색 결과가 없습니다.</h3></div>
-        </div>
+<div class="deal-card" data-category="반도체">
+  <div class="card-header">
+    <span class="category-badge">반도체</span>
+    <h3>🎯 [칩스앤미디어] 한투파, 매각 시동 및 볼트온 M&A 추진</h3>
+  </div>
+  <ul>
+    <li><strong>주체:</strong> 한투파 (한국투자파트너스)</li>
+    <li><strong>상태:</strong> 진행 중 (매각 시동, M&A 추진)</li>
+    <li><strong>링크:</strong> <a href="https://news.google.com/rss/articles/CBMiaEFVX3lxTE1WRERTbjRpanhOeWZlRlQyOVdtcV9ZT0hGTHhJdG43N09DUnpmSGNDc1hRTS1zdkhmSmhhYmtJdGJieV9pM1hIUnpyT1dnNXlxWVhyYW5VYXdkaE9rX29jMkM3bFJ5eWs40gFsQVVfeXFMT2VLemQwenJ2SG1NdjBtM3BHVjZrQ0N6eFBXUkx6LUlBLWhYR2xKcjdMZjRvekNtMXd2YVc4T0hnZF84eDJLUF9OMGY1V0hWSVh2RS13ZEk0ZW5NbkloOWdSbFVNb2lLcXZOd015?oc=5" target="_blank" class="source-link">블로터</a></li>
+  </ul>
+  <h4>핵심 요약</h4>
+  <ul>
+    <li>한국투자파트너스(한투파)가 반도체 IP 기업 칩스앤미디어의 매각 절차에 돌입했습니다.</li>
+    <li>동시에 '볼트온 M&A'를 통해 포트폴리오 확장을 모색하고 있습니다.</li>
+  </ul>
+</div>
+
+<div class="deal-card" data-category="반도체">
+  <div class="card-header">
+    <span class="category-badge">반도체</span>
+    <h3>🎯 [에이팩트] 경영권 매각 소식</h3>
+  </div>
+  <ul>
+    <li><strong>주체:</strong> 에이팩트</li>
+    <li><strong>상태:</strong> 진행 중 (경영권 매각 추진)</li>
+    <li><strong>링크:</strong> <a href="https://news.google.com/rss/articles/CBMiaEFVX3lxTE1MWXQyOXlKTGJzUHBVM0wtQlprOHctcWlpeXhybkc1eGdIMUR2LVNLejZjSy0tNEppQ1BJLUFCamxRUFM1ZjA5REttNGo1emVpWC1KQjBoSjh3TGU1dWRKMjlUMEE2OHJS0gFsQVVfeXFMTVp5NHFfbGdhNnFaU2Y3eTBRUWFBZ0dLTXB4Rm1Temo5eVFxeDhrWWVlSmNuanZURHFNaU9lX2NNV1Y1OWN3djMyTkw2d1I2Wl9LZkdvek9uSDhxVDRDb2hlWl9YRzd0VERLUHcw?oc=5" target="_blank" class="source-link">블로터</a></li>
+  </ul>
+  <h4>핵심 요약</h4>
+  <ul>
+    <li>반도체 후공정 전문기업 에이팩트가 경영권 매각을 추진하고 있습니다.</li>
+  </ul>
+</div>
+
+<div class="deal-card" data-category="바이오">
+  <div class="card-header">
+    <span class="category-badge">바이오</span>
+    <h3>🎯 [JW홀딩스] 바이오 전문 VC 솔리더스 인수</h3>
+  </div>
+  <ul>
+    <li><strong>주체:</strong> JW홀딩스</li>
+    <li><strong>상태:</strong> 완료</li>
+    <li><strong>링크:</strong> <a href="https://news.google.com/rss/articles/CBMiWkFVX3lxTE8xTDNOUnB2Y0NOd0pVN01vT1JYZklDbVlBcnUtVllKTGJpbXZ5eGtpM1lvblNfZ29YTk0wSFdydGdwc2hvTmlESFExWGlRYTN1aDgxYTVkNXQxZ9IBVEFVX3lxTE5FekpWY1VhZ01HdFBYTV9sOWRMWS1fLXdvaUFKV2NsOVNSc0Q4VWFfR2R4NlMwRzJsaVpSMjBmMWg1RzhmWjI5Ynd5QmFzeG5kUU5nSw?oc=5" target="_blank" class="source-link">한국경제</a> <a href="https://news.google.com/rss/articles/CBMibEFVX3lxTE1faWlKMlBuVjFndXEwbWFwbVhWOVZpUEtUbWRCTm0wMEdrcUx2Z0I1NjlqdWxnQmNGT3lWMDJaNU5CMmxUU3VmYTg1dTlVbkViczZyT015RFpZZ2lZTWRzZHJtc25VVThObW51QtIBcEFVX3lxTFA1SmV5eWI2QnpRei12WWZaaEQtaXN1bjh0bElfMnpYdmtoenFJNlR5eWF5Rk1NcFo4QXd1UW55clA3UXhRVXZIczVxYUcteUNhZjdacWRyb3duS256RDM2dGpUQkE5czJlb3BPMkVBeU0?oc=5" target="_blank" class="source-link">더바이오</a> <a href="https://news.google.com/rss/articles/CBMiakFVX3lxTE5aQlhqR3MwWXdTeElhM19Qc21mYW16UndtRDAtMVJ1Z1BsNDZkSkpETURSWGF6S2I5NkxVbEpTMDFwbkhNN1ROU0JrV0l5X1pfa1pBWVkxVkFJQWZEQUY1QmNCQnRfMkw3Tmc?oc=5" target="_blank" class="source-link">비즈월드</a></li>
+  </ul>
+  <h4>핵심 요약</h4>
+  <ul>
+    <li>JW홀딩스가 바이오 전문 벤처캐피탈(VC) 솔리더스를 인수했습니다.</li>
+    <li>이번 인수를 통해 오픈 이노베이션 투자를 확대하고 신약 개발 역량을 강화할 계획입니다.</li>
+  </ul>
+</div>
+
+<div class="deal-card" data-category="바이오">
+  <div class="card-header">
+    <span class="category-badge">바이오</span>
+    <h3>🎯 [유투바이오] SML메디트리에 지분 투자</h3>
+  </div>
+  <ul>
+    <li><strong>주체:</strong> 유투바이오</li>
+    <li><strong>상태:</strong> 완료</li>
+    <li><strong>링크:</strong> <a href="https://news.google.com/rss/articles/CBMiSEFVX3lxTE05bTEzX052RV84bkRTOTU0dERFQUNLMF9OT055emRlM3VPZS0yZXV1RTRPWkdRRTNPelNsRFRtOGNoWElGRC1JNw?oc=5" target="_blank" class="source-link">플래텀(Platum)</a></li>
+  </ul>
+  <h4>핵심 요약</h4>
+  <ul>
+    <li>유투바이오가 SML메디트리에 63억원을 투자하여 지분 84%를 확보했습니다.</li>
+  </ul>
+</div>
+
+<div class="deal-card" data-category="기타">
+  <div class="card-header">
+    <span class="category-badge">기타</span>
+    <h3>🎯 [광천김] 지분 매각 불발 후 IPO 선회 소식</h3>
+  </div>
+  <ul>
+    <li><strong>주체:</strong> 광천김</li>
+    <li><strong>상태:</strong> 진행 중 (지분 매각 불발, IPO 선회)</li>
+    <li><strong>링크:</strong> <a href="https://news.google.com/rss/articles/CBMiVEFVX3lxTE9tUTlvTjY2UVh3UzU3YTVXLWxpd3RGZm8weURscGdiWFF0Y3VCSG81dng4SENDWFZlREg0QnFYTFRMUW92MGFXRzlaOXhmaktIcDRvZw?oc=5" target="_blank" class="source-link">이투데이</a></li>
+  </ul>
+  <h4>핵심 요약</h4>
+  <ul>
+    <li>'검은 반도체'로 불리는 광천김의 지분 매각이 불발되면서 IPO로 전략을 선회했습니다.</li>
+    <li>이를 통해 기업가치를 제대로 인정받을지 관심이 모아지고 있습니다.</li>
+  </ul>
+</div></div>
     </div>
-
     <script>
-        function filterDeals(category) {
-            const buttons = document.querySelectorAll('.filter-btn');
-            buttons.forEach(btn => btn.classList.remove('active'));
+        function filterDeals(cat) {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             event.target.classList.add('active');
-
-            const cards = document.querySelectorAll('.deal-card');
-            cards.forEach(card => {
-                const cardCategory = card.getAttribute('data-category');
-                if (category === '전체' || cardCategory === category) {
-                    card.style.display = 'block';
-                } else {
-                    card.style.display = 'none';
-                }
+            document.querySelectorAll('.deal-card').forEach(c => {
+                c.style.display = (cat === '전체' || c.getAttribute('data-category') === cat) ? 'block' : 'none';
             });
         }
     </script>
