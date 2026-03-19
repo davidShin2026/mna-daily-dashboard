@@ -8,7 +8,7 @@ import pytz
 # 1. API 키 설정
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 
-# --- 추가된 핵심 로직: 내 API 키가 사용할 수 있는 모델 자동 검색 ---
+# --- 사용할 수 있는 모델 자동 검색 ---
 try:
     available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
     target_models = ['models/gemini-1.5-flash', 'models/gemini-1.5-pro', 'models/gemini-pro']
@@ -20,33 +20,34 @@ try:
             break
 
     if not chosen_model_name:
-        chosen_model_name = available_models[0] # 사용 가능한 첫 번째 모델 자동 선택
+        chosen_model_name = available_models[0] 
             
 except Exception as e:
     print(f"모델 검색 중 에러 발생: {e}")
     raise e
 # -------------------------------------------------------------------
 
-# 2. 타겟 섹터 M&A 뉴스 수집
-query = "M&A OR 인수 OR 합병 (Vision AI OR 실리콘 포토닉스 OR 전고체 배터리 OR 데이터센터)"
+# 2. (수정됨) 확장된 섹터 및 '최근 3개월(when:3m)' 뉴스 수집
+query = "M&A OR 인수 OR 합병 (반도체 OR 바이오 OR 제약 OR 헬스케어 OR 배터리 OR 이차전지) when:3m"
 rss_url = f"https://news.google.com/rss/search?q={query}&hl=ko&gl=KR&ceid=KR:ko"
 
 response = requests.get(rss_url)
 root = ET.fromstring(response.text)
 
 news_context = ""
-for i, item in enumerate(root.findall('.//item')[:5]):
+# 3개월치 데이터이므로 수집하는 기사 갯수를 15개로 늘림
+for i, item in enumerate(root.findall('.//item')[:15]):
     title = item.find('title').text
     link = item.find('link').text
     news_context += f"{i+1}. 제목: {title}\n링크: {link}\n\n"
 
 if not news_context.strip():
-    deal_content = "<div class='deal-card'><h3>오늘의 M&A 소식이 없습니다.</h3></div>"
+    deal_content = "<div class='deal-card'><h3>최근 3개월간 관련 M&A 소식이 없습니다.</h3></div>"
 else:
-    # 3. Gemini API 프롬프트 세팅
+    # 3. (수정됨) Gemini API 프롬프트 '최근 3개월'로 세팅
     prompt = f"""
     당신은 글로벌 IB의 탑티어 M&A 리서치 애널리스트입니다. 
-    아래 뉴스를 바탕으로 지난 24시간 동안 발생한 주요 M&A 및 지분 투자 소식을 요약해 주세요.
+    아래 뉴스를 바탕으로 '최근 3개월 동안' 발생한 주요 M&A 및 지분 투자 소식을 요약해 주세요.
 
     [뉴스 데이터]
     {news_context}
