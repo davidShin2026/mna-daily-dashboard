@@ -8,7 +8,6 @@ import pytz
 # 1. API 키 설정
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 
-# --- 사용할 수 있는 모델 자동 검색 ---
 try:
     available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
     target_models = ['models/gemini-1.5-flash', 'models/gemini-1.5-pro', 'models/gemini-pro']
@@ -18,33 +17,29 @@ try:
         if tm in available_models:
             chosen_model_name = tm
             break
-
     if not chosen_model_name:
         chosen_model_name = available_models[0] 
-            
 except Exception as e:
     print(f"모델 검색 중 에러 발생: {e}")
     raise e
-# -------------------------------------------------------------------
 
-# 2. (수정됨) 확장된 섹터 및 '최근 3개월(when:3m)' 뉴스 수집
-query = "M&A OR 인수 OR 합병 (반도체 OR 바이오 OR 제약 OR 헬스케어 OR 배터리 OR 이차전지) when:3m"
+# 2. (수정됨) 검색어 정밀 타겟팅 ("인수합병", "지분투자" 정확히 매칭)
+query = '("인수합병" OR "지분투자" OR "경영권 인수") (반도체 OR 바이오 OR 제약 OR 헬스케어 OR 배터리 OR 이차전지) when:3m'
 rss_url = f"https://news.google.com/rss/search?q={query}&hl=ko&gl=KR&ceid=KR:ko"
 
 response = requests.get(rss_url)
 root = ET.fromstring(response.text)
 
 news_context = ""
-# 3개월치 데이터이므로 수집하는 기사 갯수를 15개로 늘림
 for i, item in enumerate(root.findall('.//item')[:15]):
     title = item.find('title').text
     link = item.find('link').text
     news_context += f"{i+1}. 제목: {title}\n링크: {link}\n\n"
 
 if not news_context.strip():
-    deal_content = "<div class='deal-card'><h3>최근 3개월간 관련 M&A 소식이 없습니다.</h3></div>"
+    deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 조건에 맞는 뉴스가 검색되지 않았습니다.</h3></div>"
 else:
-    # 3. (수정됨) Gemini API 프롬프트 '최근 3개월'로 세팅
+    # 3. (수정됨) AI가 절대 줄글을 쓰지 못하도록 강력 통제
     prompt = f"""
     당신은 글로벌 IB의 탑티어 M&A 리서치 애널리스트입니다. 
     아래 뉴스를 바탕으로 '최근 3개월 동안' 발생한 주요 M&A 및 지분 투자 소식을 요약해 주세요.
@@ -52,13 +47,12 @@ else:
     [뉴스 데이터]
     {news_context}
 
-    [필수 조건]
-    1. 누락 불가: 인수 주체와 매각 대상의 사명 명시.
-    2. 딜 세부 정보: 거래 대상 지분 규모, 지분율, 금액 포함 (확인 불가 시 '미상' 표기).
-    3. 사업 개요: 대상 업체의 핵심 비즈니스를 3줄 이내 개조식 요약.
-    4. 재무 정보: 최근 3개년 매출액, 영업이익, 당기순이익 표 작성.
+    [엄격한 필수 조건]
+    1. 제공된 뉴스 중 '실제 기업 간의 인수합병(M&A)' 또는 '지분 투자' 건만 추출하세요. (단순 MOU, 정부 정책, 게임 출시 뉴스는 완벽히 배제할 것)
+    2. 추출할 딜이 1개라도 있다면 반드시 [출력 형식 1]의 HTML 태그만 출력하세요.
+    3. 만약 진짜 딜 소식이 단 하나도 없다면, 절대 부연 설명이나 사족을 달지 말고 오직 [출력 형식 2]의 HTML 태그만 출력하세요.
 
-    [출력 형식 (반드시 아래 HTML 태그만 출력할 것)]
+    [출력 형식 1 (관련 딜이 있을 때)]
     <div class="deal-card">
       <h3>🎯 [대상 업체명] M&A 건</h3>
       <ul>
@@ -67,16 +61,21 @@ else:
         <li><strong>딜 규모:</strong> [인수 금액] / 지분 [지분율]% 확보</li>
       </ul>
       <h4>사업 개요</h4>
-      <ul><li>[내용 1]</li><li>[내용 2]</li><li>[내용 3]</li></ul>
+      <ul><li>[내용 1]</li><li>[내용 2]</li></ul>
       <h4>최근 3개년 재무 현황</h4>
       <table>
         <tr><th>연도</th><th>매출액</th><th>영업이익</th><th>당기순이익</th></tr>
         <tr><td>2023</td><td>-</td><td>-</td><td>-</td></tr>
       </table>
     </div>
+
+    [출력 형식 2 (관련 딜이 없을 때 - 부연 설명 절대 금지)]
+    <div class="deal-card">
+      <h3 style="color:#e53e3e;">🎯 확인된 주요 M&A 딜 없음</h3>
+      <p>최근 3개월 뉴스 중 유의미한 인수합병 및 지분 투자 소식이 없습니다.</p>
+    </div>
     """
 
-    # 자동 선택된 모델로 실행
     model = genai.GenerativeModel(chosen_model_name.replace('models/', ''))
     result = model.generate_content(prompt)
     deal_content = result.text
