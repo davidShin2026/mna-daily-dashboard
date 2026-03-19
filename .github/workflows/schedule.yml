@@ -1,0 +1,35 @@
+name: Daily M&A Dashboard Update
+
+on:
+  schedule:
+    - cron: '10 23 * * *' # 한국시간 매일 오전 8시 10분
+  workflow_dispatch: # 수동 실행 버튼
+
+permissions:
+  contents: write # 파일 자동 저장을 위한 권한
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 저장소 코드 불러오기
+        uses: actions/checkout@v4
+
+      - name: 파이썬 환경 설정
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 필요 라이브러리 설치
+        run: pip install -r requirements.txt pytz
+
+      - name: 파이썬 스크립트 실행 (웹페이지 생성)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python main.py
+
+      - name: 변경된 웹페이지를 저장소에 반영
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Auto-update daily M&A briefing"
+          file_pattern: 'index.html'
