@@ -8,6 +8,25 @@ import pytz
 # 1. API 키 설정
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 
+# --- 추가된 핵심 로직: 내 API 키가 사용할 수 있는 모델 자동 검색 ---
+try:
+    available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+    target_models = ['models/gemini-1.5-flash', 'models/gemini-1.5-pro', 'models/gemini-pro']
+    
+    chosen_model_name = None
+    for tm in target_models:
+        if tm in available_models:
+            chosen_model_name = tm
+            break
+
+    if not chosen_model_name:
+        chosen_model_name = available_models[0] # 사용 가능한 첫 번째 모델 자동 선택
+            
+except Exception as e:
+    print(f"모델 검색 중 에러 발생: {e}")
+    raise e
+# -------------------------------------------------------------------
+
 # 2. 타겟 섹터 M&A 뉴스 수집
 query = "M&A OR 인수 OR 합병 (Vision AI OR 실리콘 포토닉스 OR 전고체 배터리 OR 데이터센터)"
 rss_url = f"https://news.google.com/rss/search?q={query}&hl=ko&gl=KR&ceid=KR:ko"
@@ -56,7 +75,8 @@ else:
     </div>
     """
 
-    model = genai.GenerativeModel('gemini-pro')
+    # 자동 선택된 모델로 실행
+    model = genai.GenerativeModel(chosen_model_name.replace('models/', ''))
     result = model.generate_content(prompt)
     deal_content = result.text
 
