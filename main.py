@@ -23,23 +23,24 @@ except Exception as e:
     print(f"모델 검색 중 에러 발생: {e}")
     raise e
 
-# 2. (수정됨) 검색어 정밀 타겟팅 ("인수합병", "지분투자" 정확히 매칭)
-query = '("인수합병" OR "지분투자" OR "경영권 인수") (반도체 OR 바이오 OR 제약 OR 헬스케어 OR 배터리 OR 이차전지) when:3m'
+# 2. (핵심 수정) 검색어 유연성 확보 및 실무 키워드 총동원
+query = "(M&A OR 인수 OR 매각 OR 지분투자) (반도체 OR 바이오 OR 제약 OR 헬스케어 OR 배터리 OR 2차전지) when:3m"
 rss_url = f"https://news.google.com/rss/search?q={query}&hl=ko&gl=KR&ceid=KR:ko"
 
 response = requests.get(rss_url)
 root = ET.fromstring(response.text)
 
 news_context = ""
-for i, item in enumerate(root.findall('.//item')[:15]):
+# 3개월 치 광범위 탐색을 위해 탐색 기사 수를 30개로 두 배 확장
+for i, item in enumerate(root.findall('.//item')[:30]):
     title = item.find('title').text
     link = item.find('link').text
     news_context += f"{i+1}. 제목: {title}\n링크: {link}\n\n"
 
 if not news_context.strip():
-    deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 조건에 맞는 뉴스가 검색되지 않았습니다.</h3></div>"
+    deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 뉴스 검색 결과가 없습니다. (구글 뉴스 서버 지연 가능성)</h3></div>"
 else:
-    # 3. (수정됨) AI가 절대 줄글을 쓰지 못하도록 강력 통제
+    # 3. (핵심 수정) 발견된 여러 딜을 모두 카드로 만들도록 지시
     prompt = f"""
     당신은 글로벌 IB의 탑티어 M&A 리서치 애널리스트입니다. 
     아래 뉴스를 바탕으로 '최근 3개월 동안' 발생한 주요 M&A 및 지분 투자 소식을 요약해 주세요.
@@ -48,17 +49,17 @@ else:
     {news_context}
 
     [엄격한 필수 조건]
-    1. 제공된 뉴스 중 '실제 기업 간의 인수합병(M&A)' 또는 '지분 투자' 건만 추출하세요. (단순 MOU, 정부 정책, 게임 출시 뉴스는 완벽히 배제할 것)
-    2. 추출할 딜이 1개라도 있다면 반드시 [출력 형식 1]의 HTML 태그만 출력하세요.
-    3. 만약 진짜 딜 소식이 단 하나도 없다면, 절대 부연 설명이나 사족을 달지 말고 오직 [출력 형식 2]의 HTML 태그만 출력하세요.
+    1. 제공된 뉴스 중 '실제 기업 간의 인수, 매각, 합병(M&A)' 또는 '지분 투자' 건만 추출하세요. (단순 MOU, 정부 정책, 제품 출시는 철저히 배제)
+    2. 발견된 유의미한 딜이 여러 개라면, 아래 [출력 형식 1]의 HTML <div> 태그 블록을 딜의 개수만큼 반복해서 모두 출력하세요. (절대 1개만 쓰고 멈추지 말 것)
+    3. 만약 진짜 딜 소식이 단 하나도 없다면, 절대 부연 설명이나 사족을 달지 말고 오직 [출력 형식 2]의 HTML 태그 하나만 출력하세요.
 
-    [출력 형식 1 (관련 딜이 있을 때)]
+    [출력 형식 1 (관련 딜이 있을 때 - 딜 개수만큼 반복 출력)]
     <div class="deal-card">
-      <h3>🎯 [대상 업체명] M&A 건</h3>
+      <h3>🎯 [대상 업체명] M&A/투자 건</h3>
       <ul>
-        <li><strong>인수 주체:</strong> [인수 업체명]</li>
+        <li><strong>인수/투자 주체:</strong> [인수 업체명]</li>
         <li><strong>매각 대상:</strong> [피인수 업체명]</li>
-        <li><strong>딜 규모:</strong> [인수 금액] / 지분 [지분율]% 확보</li>
+        <li><strong>딜 규모:</strong> [인수/투자 금액] / 지분 [지분율]% 확보</li>
       </ul>
       <h4>사업 개요</h4>
       <ul><li>[내용 1]</li><li>[내용 2]</li></ul>
@@ -69,7 +70,7 @@ else:
       </table>
     </div>
 
-    [출력 형식 2 (관련 딜이 없을 때 - 부연 설명 절대 금지)]
+    [출력 형식 2 (관련 딜이 없을 때)]
     <div class="deal-card">
       <h3 style="color:#e53e3e;">🎯 확인된 주요 M&A 딜 없음</h3>
       <p>최근 3개월 뉴스 중 유의미한 인수합병 및 지분 투자 소식이 없습니다.</p>
