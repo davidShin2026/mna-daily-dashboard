@@ -1,9 +1,11 @@
 import os
 import requests
+import urllib.parse
 import xml.etree.ElementTree as ET
 import google.generativeai as genai
 from datetime import datetime
 import pytz
+import time
 
 # 1. API 키 설정
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
@@ -16,83 +18,71 @@ except Exception as e:
     print(f"모델 설정 에러: {e}")
     raise e
 
-# 2. 메이저 언론사 15곳 메가 파이프라인 (경제지, 종합지, 통신사, IT전문지)
-rss_feeds = [
-    # 경제/비즈니스
-    "https://rss.hankyung.com/feed/economy.xml",
-    "https://rss.hankyung.com/feed/it.xml",
-    "https://rss.hankyung.com/feed/industry.xml",
-    "https://www.mk.co.kr/rss/30100041/", # 매경 기업
-    "https://www.mk.co.kr/rss/50300009/", # 매경 IT
-    "https://www.mk.co.kr/rss/50200011/", # 매경 증권
-    "https://biz.sbs.co.kr/rss/economy.xml", # SBS Biz
-    # 종합지/통신사
-    "https://www.yna.co.kr/rss/economy.xml", # 연합뉴스 경제
-    "https://www.yna.co.kr/rss/industry.xml", # 연합뉴스 산업
-    "https://rss.donga.com/economy.xml", # 동아일보 경제
-    "https://rss.joins.com/joins_money_list.xml", # 중앙일보 경제
-    # IT/기술 전문
-    "https://rss.etnews.com/Section902.xml", # 전자신문 기업
-    "https://rss.etnews.com/Section903.xml", # 전자신문 부품소재
-    "https://rss.etnews.com/Section904.xml", # 전자신문 과학
-    "https://www.bloter.net/rss/allArticle.xml" # 블로터(IT/스타트업)
+# 2. 구글 뉴스 초압축 스나이퍼 쿼리 (IP 차단 방지를 위해 단 3번만 호출)
+# 국내 100개 이상 언론사의 6개월 치 기사를 한 번에 검색합니다.
+queries = [
+    '반도체 ("M&A" OR "인수합병" OR "경영권" OR "지분 인수" OR "매각" OR "IPO") when:6m',
+    '바이오 ("M&A" OR "인수합병" OR "경영권" OR "지분 인수" OR "매각" OR "IPO") when:6m',
+    '(배터리 OR 이차전지) ("M&A" OR "인수합병" OR "경영권" OR "지분 인수" OR "매각" OR "IPO") when:6m'
 ]
 
-# 확장된 자본 거래(Deal) 뜰채 키워드 (초기 딜부터 Exit까지)
-deal_keywords = [
-    "인수", "합병", "M&A", "매각", "지분", "투자", "상장", "IPO", 
-    "시리즈", "펀드", "스타트업", "벤처", "스팩", "SPAC", "합작", "JV"
-]
+# 가짜 딜(내부 투자)을 걸러내는 강력한 블랙리스트 (네거티브 필터링)
+exclude_keywords = ["설비", "시설", "연구개발", "R&D", "공장", "증설", "자사주", "채용", "사옥", "실적", "영업이익"]
 
 news_context = ""
 idx = 1
 seen_titles = set()
 
-# 차단 방지 헤더
 headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36'
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 }
 
-for url in rss_feeds:
+for q in queries:
+    encoded_query = urllib.parse.quote(q)
+    url = f"https://news.google.com/rss/search?q={encoded_query}&hl=ko&gl=KR&ceid=KR:ko"
+    
     try:
-        # 타임아웃을 5초로 줄여 응답 없는 사이트는 빠르게 버리고 넘어감
-        response = requests.get(url, headers=headers, timeout=5)
-        if response.status_code != 200:
-            continue
-            
-        root = ET.fromstring(response.text)
+        response = requests.get(url, headers=headers, timeout=10)
         
-        for item in root.findall('.//item'):
-            title = item.find('title').text
-            link = item.find('link').text
-            pub_date_elem = item.find('pubDate')
-            pub_date = pub_date_elem.text if pub_date_elem is not None else "오늘"
+        if response.status_code == 200:
+            root = ET.fromstring(response.text)
             
-            if title and any(k in title for k in deal_keywords):
-                # 중복 기사 필터링 및 토큰 한도 초과 방지 (최대 60개까지만 수집)
-                if title not in seen_titles and idx <= 60:
+            # 각 섹터당 가장 연관도 높은 상위 15개 기사 정밀 탐색
+            for item in root.findall('.//item')[:15]:
+                title = item.find('title').text
+                link = item.find('link').text
+                pub_date = item.find('pubDate').text
+                
+                # 파이썬 1차 뜰채: 블랙리스트 단어가 제목에 있으면 즉시 버림
+                if any(bad_word in title for bad_word in exclude_keywords):
+                    continue
+                    
+                if title not in seen_titles:
                     seen_titles.add(title)
                     news_context += f"[{idx}] 제목: {title}\n날짜: {pub_date}\n링크: {link}\n\n"
                     idx += 1
                     
+        # 구글 서버를 자극하지 않기 위해 3초간 휴식
+        time.sleep(3)
+        
     except Exception as e:
-        # 특정 언론사 서버 에러 시 무시하고 다음으로 진행
+        print(f"[{q}] 파싱 에러: {e}")
         continue
 
-# 3. AI 분석 엔진
 if not news_context.strip():
-    deal_content = "<div class='deal-card'><h3 style='color:#718096;'>🎯 오늘 업데이트된 국내 주요 M&A 및 투자 소식이 없습니다.</h3></div>"
+    deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 뉴스 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</h3></div>"
 else:
+    # 3. AI 2차 분석 엔진 (진짜 자본 거래만 엄선)
     prompt = f"""
     당신은 글로벌 IB의 시니어 M&A 애널리스트입니다. 
-    제공된 경제 기사 리스트에서 '반도체, 바이오, 배터리' 섹터와 관련된 M&A, 지분 투자, 상장 소식만을 '엄격하게' 선별하여 요약하세요. 
-    단순 제품 출시, 실적 발표, 인사 이동 등 자본 거래와 무관한 기사는 절대 포함하지 마세요.
+    제공된 뉴스 리스트에서 '반도체, 바이오, 배터리' 관련 '타 기업 인수, 합병, 경영권 매각, 지분 투자, 상장(IPO)' 소식만을 엄격하게 선별하여 요약하세요. 
+    기업의 단순 설비 투자, 공장 신설, 신제품 출시 기사는 절대 포함하지 마세요.
 
     [뉴스 데이터]
     {news_context}
 
     [작성 규칙]
-    1. 반드시 '반도체', '바이오', '배터리', '기타(자본거래 확실한 건만)' 카테고리로 분류하세요. (이차전지는 '배터리'로 통일)
+    1. 반드시 '반도체', '바이오', '배터리', '기타' 카테고리로 분류하세요. (이차전지는 '배터리'로 통일)
     2. 동일 건에 대한 기사는 하나로 묶고 기사 링크를 나열하세요.
     3. 사족이나 인사말 없이 오직 HTML <div> 카드들만 출력하세요.
     4. 기사의 '날짜' 데이터를 확인하여, 딜 발생 일자를 헤드라인(<h3>) 앞에 [YYYY.MM.DD] 형식으로 포함하세요.
@@ -105,8 +95,8 @@ else:
       </div>
       <ul>
         <li><strong>주체:</strong> [인수/투자자]</li>
-        <li><strong>상태:</strong> [진행상태]</li>
-        <li><strong>링크:</strong> <a href="URL1" target="_blank" class="source-link">기사1</a></li>
+        <li><strong>상태:</strong> [진행상태 (예: 지분 인수 완료, 경영권 매각 추진 중 등)]</li>
+        <li><strong>링크:</strong> <a href="URL1" target="_blank" class="source-link">기사1</a> <a href="URL2" target="_blank" class="source-link">기사2</a></li>
       </ul>
       <h4>핵심 요약</h4>
       <ul><li>내용1</li><li>내용2</li></ul>
@@ -117,7 +107,7 @@ else:
     result = model.generate_content(prompt)
     deal_content = result.text.replace('```html', '').replace('```', '').strip()
 
-# 4. HTML 생성 (ISU OI Team 로고 UI 유지)
+# 4. HTML 생성 (ISU OI Team 고도화 UI 유지)
 kst = pytz.timezone('Asia/Seoul')
 today_str = datetime.now(kst).strftime("%Y년 %m월 %d일")
 
