@@ -17,7 +17,6 @@ except Exception as e:
     raise e
 
 # 2. 검색 쿼리 잘게 쪼개기 (구글 RSS 에러 방지)
-# 특수문자(M&A의 & 등)와 OR 연산자를 제거하고 직관적인 단어 조합으로 분리했습니다.
 queries = [
     "반도체 인수합병", "반도체 지분투자", "반도체 경영권", "반도체 IPO 상장", "반도체 시리즈 투자",
     "바이오 인수합병", "바이오 지분투자", "바이오 경영권", "바이오 IPO 상장", "바이오 시리즈 투자",
@@ -119,3 +118,44 @@ html_template = f"""
         .category-badge {{ background: #ebf8fa; color: #319795; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: bold; margin-right: 15px; border: 1px solid #b2f5ea; }}
         .deal-card h3 {{ margin: 0; font-size: 1.25em; color: #2d3748; }}
         .source-link {{ color: #dd6b20; text-decoration: none; font-weight: bold; margin-right: 8px; background: #feebc8; padding: 3px 8px; border-radius: 4px; display: inline-block; margin-bottom: 4px; }}
+        
+        @media (max-width: 600px) {{
+            body {{ padding: 15px; }}
+            h1 {{ font-size: 1.5em; }}
+            .filter-btn {{ padding: 12px 16px; font-size: 1.1em; flex-grow: 1; text-align: center; }}
+            .deal-card {{ padding: 15px; }}
+            .category-badge {{ padding: 3px 8px; font-size: 0.8em; margin-right: 10px; }}
+            .deal-card h3 {{ font-size: 1.15em; line-height: 1.3; }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style="text-align:center;">📊 Domestic M&A Daily Dashboard</h1>
+        <p style="text-align:center; font-weight:bold; color:#718096; margin-bottom: 25px;">업데이트: {today_str}</p>
+        
+        <div class="filter-container">
+            <button class="filter-btn active" onclick="filterDeals('전체')">전체보기</button>
+            <button class="filter-btn" onclick="filterDeals('반도체')">반도체</button>
+            <button class="filter-btn" onclick="filterDeals('바이오')">바이오</button>
+            <button class="filter-btn" onclick="filterDeals('배터리')">배터리</button>
+            <button class="filter-btn" onclick="filterDeals('기타')">기타</button>
+        </div>
+        
+        <div id="deal-list">{deal_content}</div>
+    </div>
+    <script>
+        function filterDeals(cat) {{
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            document.querySelectorAll('.deal-card').forEach(c => {{
+                c.style.display = (cat === '전체' || c.getAttribute('data-category') === cat) ? 'block' : 'none';
+            }});
+        }}
+    </script>
+</body>
+</html>
+"""
+
+with open("index.html", "w", encoding="utf-8") as f:
+    f.write(html_template)
