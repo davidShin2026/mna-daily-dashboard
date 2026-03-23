@@ -16,32 +16,47 @@ except Exception as e:
     print(f"모델 설정 에러: {e}")
     raise e
 
-# 2. 검색 포털 우회 -> 주요 경제지 공식 RSS 피드 직결
-# 구글/네이버의 봇 차단을 피해 언론사 서버에서 직접 기사를 가져옵니다.
+# 2. 메이저 언론사 15곳 메가 파이프라인 (경제지, 종합지, 통신사, IT전문지)
 rss_feeds = [
-    "https://rss.hankyung.com/feed/it.xml",       # 한국경제 IT/과학
-    "https://rss.hankyung.com/feed/industry.xml", # 한국경제 산업
-    "https://www.mk.co.kr/rss/50300009/",         # 매일경제 IT
-    "https://www.mk.co.kr/rss/50200011/",         # 매일경제 증권
-    "https://www.mk.co.kr/rss/30100041/",         # 매일경제 기업
-    "https://www.etnews.com/rss/industry.xml"     # 전자신문 산업
+    # 경제/비즈니스
+    "https://rss.hankyung.com/feed/economy.xml",
+    "https://rss.hankyung.com/feed/it.xml",
+    "https://rss.hankyung.com/feed/industry.xml",
+    "https://www.mk.co.kr/rss/30100041/", # 매경 기업
+    "https://www.mk.co.kr/rss/50300009/", # 매경 IT
+    "https://www.mk.co.kr/rss/50200011/", # 매경 증권
+    "https://biz.sbs.co.kr/rss/economy.xml", # SBS Biz
+    # 종합지/통신사
+    "https://www.yna.co.kr/rss/economy.xml", # 연합뉴스 경제
+    "https://www.yna.co.kr/rss/industry.xml", # 연합뉴스 산업
+    "https://rss.donga.com/economy.xml", # 동아일보 경제
+    "https://rss.joins.com/joins_money_list.xml", # 중앙일보 경제
+    # IT/기술 전문
+    "https://rss.etnews.com/Section902.xml", # 전자신문 기업
+    "https://rss.etnews.com/Section903.xml", # 전자신문 부품소재
+    "https://rss.etnews.com/Section904.xml", # 전자신문 과학
+    "https://www.bloter.net/rss/allArticle.xml" # 블로터(IT/스타트업)
 ]
 
-# 파이썬 1차 필터링용 자본 거래 핵심 키워드
-deal_keywords = ["인수", "합병", "M&A", "매각", "지분", "투자", "상장", "IPO", "시리즈", "펀드"]
+# 확장된 자본 거래(Deal) 뜰채 키워드 (초기 딜부터 Exit까지)
+deal_keywords = [
+    "인수", "합병", "M&A", "매각", "지분", "투자", "상장", "IPO", 
+    "시리즈", "펀드", "스타트업", "벤처", "스팩", "SPAC", "합작", "JV"
+]
 
 news_context = ""
 idx = 1
 seen_titles = set()
 
-# 차단 방지용 기본 헤더
+# 차단 방지 헤더
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36'
 }
 
 for url in rss_feeds:
     try:
-        response = requests.get(url, headers=headers, timeout=10)
+        # 타임아웃을 5초로 줄여 응답 없는 사이트는 빠르게 버리고 넘어감
+        response = requests.get(url, headers=headers, timeout=5)
         if response.status_code != 200:
             continue
             
@@ -50,37 +65,34 @@ for url in rss_feeds:
         for item in root.findall('.//item'):
             title = item.find('title').text
             link = item.find('link').text
-            
-            # 언론사별 날짜 포맷 차이 대응
             pub_date_elem = item.find('pubDate')
             pub_date = pub_date_elem.text if pub_date_elem is not None else "오늘"
             
-            # 파이썬 1차 뜰채: 제목에 딜(Deal) 키워드가 있는 기사만 포착
             if title and any(k in title for k in deal_keywords):
-                if title not in seen_titles:
+                # 중복 기사 필터링 및 토큰 한도 초과 방지 (최대 60개까지만 수집)
+                if title not in seen_titles and idx <= 60:
                     seen_titles.add(title)
                     news_context += f"[{idx}] 제목: {title}\n날짜: {pub_date}\n링크: {link}\n\n"
                     idx += 1
                     
     except Exception as e:
-        print(f"[{url}] 파싱 에러: {e}")
+        # 특정 언론사 서버 에러 시 무시하고 다음으로 진행
         continue
 
-# 3. 예외 처리 및 AI 요약
+# 3. AI 분석 엔진
 if not news_context.strip():
-    # 언론사 직결 방식이므로, 에러가 아니라 진짜 오늘 발생한 딜이 없을 경우입니다.
     deal_content = "<div class='deal-card'><h3 style='color:#718096;'>🎯 오늘 업데이트된 국내 주요 M&A 및 투자 소식이 없습니다.</h3></div>"
 else:
-    # AI 프롬프트
     prompt = f"""
-    당신은 글로벌 IB의 M&A 애널리스트입니다. 
-    제공된 경제 기사 리스트에서 반도체, 바이오, 배터리 관련 M&A, 투자, 상장 소식을 철저히 요약하세요.
+    당신은 글로벌 IB의 시니어 M&A 애널리스트입니다. 
+    제공된 경제 기사 리스트에서 '반도체, 바이오, 배터리' 섹터와 관련된 M&A, 지분 투자, 상장 소식만을 '엄격하게' 선별하여 요약하세요. 
+    단순 제품 출시, 실적 발표, 인사 이동 등 자본 거래와 무관한 기사는 절대 포함하지 마세요.
 
     [뉴스 데이터]
     {news_context}
 
     [작성 규칙]
-    1. 반드시 '반도체', '바이오', '배터리', '기타' 카테고리로 분류하세요. (이차전지는 '배터리'로 통일)
+    1. 반드시 '반도체', '바이오', '배터리', '기타(자본거래 확실한 건만)' 카테고리로 분류하세요. (이차전지는 '배터리'로 통일)
     2. 동일 건에 대한 기사는 하나로 묶고 기사 링크를 나열하세요.
     3. 사족이나 인사말 없이 오직 HTML <div> 카드들만 출력하세요.
     4. 기사의 '날짜' 데이터를 확인하여, 딜 발생 일자를 헤드라인(<h3>) 앞에 [YYYY.MM.DD] 형식으로 포함하세요.
@@ -105,7 +117,7 @@ else:
     result = model.generate_content(prompt)
     deal_content = result.text.replace('```html', '').replace('```', '').strip()
 
-# 4. HTML 생성 (ISU OI Team 로고 UI 적용)
+# 4. HTML 생성 (ISU OI Team 로고 UI 유지)
 kst = pytz.timezone('Asia/Seoul')
 today_str = datetime.now(kst).strftime("%Y년 %m월 %d일")
 
