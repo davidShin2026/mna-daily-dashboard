@@ -1,5 +1,6 @@
 import os
 import requests
+import urllib.parse
 import xml.etree.ElementTree as ET
 import google.generativeai as genai
 from datetime import datetime
@@ -17,62 +18,66 @@ except Exception as e:
     print(f"모델 설정 에러: {e}")
     raise e
 
-# 2. 검색 쿼리 극단적 단순화 (특수문자, 괄호, OR 모두 제거)
+# 2. 검색 쿼리 설정
 queries = [
-    "반도체 인수합병", "반도체 M&A", "반도체 지분투자", "반도체 상장", "반도체 시리즈",
-    "바이오 인수합병", "바이오 M&A", "바이오 지분투자", "바이오 상장", "바이오 시리즈",
-    "배터리 인수합병", "배터리 M&A", "배터리 지분투자", "배터리 상장",
-    "이차전지 매각", "이차전지 투자"
+    "반도체 M&A", "반도체 인수합병", "반도체 경영권", "반도체 지분투자", "반도체 상장", "반도체 시리즈 투자",
+    "바이오 M&A", "바이오 인수합병", "바이오 경영권", "바이오 지분투자", "바이오 상장", "바이오 시리즈 투자",
+    "배터리 M&A", "배터리 인수합병", "배터리 경영권", "이차전지 지분투자", "이차전지 상장", "이차전지 시리즈 투자"
 ]
 
 news_context = ""
 idx = 1
 seen_links = set()
 
-# 브라우저 위장 헤더
+# 강력한 브라우저 위장 헤더
 headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'application/rss+xml, application/rdf+xml;q=0.8, application/xml;q=0.6, text/xml;q=0.4, text/html;q=0.2',
+    'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
 }
 
 for q in queries:
-    # requests가 가장 안전하게 인코딩하도록 params 사용
-    params = {
-        'q': f"{q} when:6m",
-        'hl': 'ko',
-        'gl': 'KR',
-        'ceid': 'KR:ko'
-    }
+    # 구글과 빙(Bing) 양쪽 URL 모두 준비
+    google_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(q + ' when:6m')}&hl=ko&gl=KR&ceid=KR:ko"
+    bing_url = f"https://www.bing.com/news/search?q={urllib.parse.quote(q)}&format=RSS&cc=kr"
     
     try:
-        response = requests.get("https://news.google.com/rss/search", params=params, headers=headers, timeout=10)
+        # 플랜 A: 구글 뉴스 시도
+        response = requests.get(google_url, headers=headers, timeout=10)
         
+        # 플랜 B: 구글이 차단하면 빙(Bing) 뉴스로 즉시 우회
         if response.status_code != 200:
-            continue
-            
+            print(f"[Google IP 차단됨] Bing 뉴스로 우회 탐색: {q}")
+            response = requests.get(bing_url, headers=headers, timeout=10)
+            if response.status_code != 200:
+                continue
+                
         root = ET.fromstring(response.text)
         
-        # 각 키워드당 상위 7개씩만 추출 (다양성 확보 및 토큰 절약)
-        for item in root.findall('.//item')[:7]:
+        # 각 키워드당 상위 5개씩 기사 추출
+        for item in root.findall('.//item')[:5]:
             title = item.find('title').text
             link = item.find('link').text
-            pub_date = item.find('pubDate').text
+            
+            # Bing 뉴스는 pubDate 포맷이 다를 수 있어 안전하게 처리
+            pub_date_elem = item.find('pubDate')
+            pub_date = pub_date_elem.text if pub_date_elem is not None else "최근 6개월 이내"
             
             if link not in seen_links:
                 seen_links.add(link)
                 news_context += f"[{idx}] 제목: {title}\n날짜: {pub_date}\n링크: {link}\n\n"
                 idx += 1
                 
-        # 구글 서버 차단 방지를 위한 1.5초 대기
-        time.sleep(1.5)
+        time.sleep(1) # 서버 과부하 방지
         
     except Exception as e:
         print(f"[{q}] 파싱 에러: {e}")
         continue
 
+# 3. 데이터가 없을 경우와 있을 경우 처리
 if not news_context.strip():
-    deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 뉴스 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</h3></div>"
+    deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 뉴스 데이터를 불러오지 못했습니다. 구글과 Bing 서버 모두 접근이 차단되었습니다.</h3></div>"
 else:
-    # 3. AI 프롬프트
     prompt = f"""
     당신은 글로벌 IB의 M&A 애널리스트입니다. 
     제공된 뉴스 리스트에서 '최근 6개월 이내'의 국내 반도체, 바이오, 배터리 관련 투자 및 M&A 소식만 골라 요약하세요.
