@@ -10,9 +10,9 @@
         .container { max-width: 900px; margin: auto; }
         
         /* 헤더 고도화 (로고/제목 flexbox 적용) */
-        .header-container { display: flex; align-items: center; justify-content: center; margin-bottom: 25px; }
-        .isu-logo { max-height: 40px; margin-right: 15px; vertical-align: middle; }
-        .isu-title { margin: 0; font-size: 2em; color: #1a365d; }
+        .header-container { display: flex; align-items: center; justify-content: center; margin-bottom: 25px; border-bottom: 2px solid #1a365d; padding-bottom: 15px; }
+        .isu-logo { max-height: 45px; margin-right: 18px; vertical-align: middle; }
+        .isu-title { margin: 0; font-size: 2.3em; color: #1a365d; }
         
         .filter-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 30px; }
         .filter-btn { background: #e2e8f0; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-weight: bold; font-size: 1em; transition: 0.2s; }
@@ -27,8 +27,9 @@
         @media (max-width: 600px) {
             body { padding: 15px; }
             h1 { font-size: 1.5em; }
-            .isu-title { font-size: 1.5em; }
-            .isu-logo { max-height: 30px; margin-right: 10px; }
+            .isu-title { font-size: 1.6em; line-height: 1.2; text-align: center; }
+            .header-container { flex-direction: column; }
+            .isu-logo { max-height: 35px; margin-right: 0; margin-bottom: 10px; }
             .filter-btn { padding: 12px 16px; font-size: 1.1em; flex-grow: 1; text-align: center; }
             .deal-card { padding: 15px; }
             .category-badge { padding: 3px 8px; font-size: 0.8em; margin-right: 10px; }
@@ -39,7 +40,7 @@
 <body>
     <div class="container">
         <div class="header-container">
-            <img src="image_8.png" class="isu-logo" alt="ISU Group Logo">
+            <img src="ISU CI.png" class="isu-logo" alt="ISU Group Logo">
             <h1 class="isu-title">M&A News for ISU OI Team</h1>
         </div>
         <p style="text-align:center; font-weight:bold; color:#718096; margin-bottom: 25px;">업데이트: 2026년 03월 23일</p>
