@@ -9,7 +9,6 @@
         body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f7f6; padding: 20px; }
         .container { max-width: 900px; margin: auto; }
         
-        /* 필터 버튼 레이아웃 변경 (Flexbox 적용) */
         .filter-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 30px; }
         .filter-btn { background: #e2e8f0; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-weight: bold; font-size: 1em; transition: 0.2s; }
         .filter-btn.active { background: #1a365d; color: white; }
@@ -20,16 +19,10 @@
         .deal-card h3 { margin: 0; font-size: 1.25em; color: #2d3748; }
         .source-link { color: #dd6b20; text-decoration: none; font-weight: bold; margin-right: 8px; background: #feebc8; padding: 3px 8px; border-radius: 4px; display: inline-block; margin-bottom: 4px; }
         
-        /* 모바일 기기(화면 폭 600px 이하) 전용 스타일 지정 */
         @media (max-width: 600px) {
             body { padding: 15px; }
             h1 { font-size: 1.5em; }
-            .filter-btn { 
-                padding: 12px 16px; /* 모바일에서 터치하기 쉽게 상하 패딩 확대 */
-                font-size: 1.1em;   /* 모바일에서 글씨 크기 확대 */
-                flex-grow: 1;       /* 화면 너비에 맞춰 버튼이 늘어나도록 설정 */
-                text-align: center;
-            }
+            .filter-btn { padding: 12px 16px; font-size: 1.1em; flex-grow: 1; text-align: center; }
             .deal-card { padding: 15px; }
             .category-badge { padding: 3px 8px; font-size: 0.8em; margin-right: 10px; }
             .deal-card h3 { font-size: 1.15em; line-height: 1.3; }
@@ -52,58 +45,24 @@
         <div id="deal-list"><div class="deal-card" data-category="반도체">
   <div class="card-header">
     <span class="category-badge">반도체</span>
-    <h3>🎯 두산그룹의 SK실트론 인수 및 두산로보틱스 지분 매각 관련 소식</h3>
+    <h3>🎯 [2025.12.24] 두산그룹, SK실트론 인수 및 두산로보틱스 지분 매각 소식</h3>
   </div>
   <ul>
     <li><strong>주체:</strong> 두산그룹 (SK실트론 인수), 두산 (두산로보틱스 지분 매각)</li>
-    <li><strong>상태:</strong> SK실트론 인수 '추진 중', 두산로보틱스 지분 매각 '완료'</li>
-    <li><strong>링크:</strong> <a href="https://news.google.com/rss/articles/CBMiZkFVX3lxTE56UDEzbXAzNlo3VjdDLVlWb2RXcVVVVkZQWUhzT2FBeHQ2a042cDR0al8yek9jQmhxOGk5OVVXbHZvcWNsZXBMcWthejZmbXpzT2I5UlFzSURGT01CMzZqUWVVU0lPUQ?oc=5" target="_blank" class="source-link">디일렉</a> <a href="https://news.google.com/rss/articles/CBMijwFBVV95cUxPUHJGVWhPVEs5TnMxajJKZHlGNDVzd1JzS245eVJEQVYxb1lVVzhnbXc1dGRNMnFFNVRsQ1pyZ3BoTS1Hek5QaXR4QXl0RXpzZ3lxdkZCb1lyU2RkcFRvYmpCMWM2b0toMDJLMmp1VlFqamoxUThXN3V1TDEwcklNRjhtUnlzOEtmU3Bvd0h0NNIBowFBVV95cUxPS1BLeHJoTi16aGR3OVVueVlzb25SYmxqbHExUHZrUVBkeXhGeU5GcHh2UldQYmk3MFdDWV9oYXE3V00wVGR3WHBKWWNUXzJiUzVwX0pKNHFwR3VOdy1nNjB3dkNLeUF6QjgxTkdZTkpabENudzYwNlY5R0xWT05BQlNTR2tiMTZhcE9hSS1Qd19mZXlBekVrYTNVYjR3UUx3cHRZ?oc=5" target="_blank" class="source-link">조선일보</a> <a href="https://news.google.com/rss/articles/CBMibEFVX3lxTE0weXctMklOY3RiOGJqY0FQMHRrM3dTUjRVY0dkUERreHNwY1V0S0VCOFp6ZWlyT1l3ZWpUeEhTQkVfbzZDMVVOdENKbXdDMnBXMkZVOGdhWWNFQUZrVU41T0p5MXh2V0I4Y2V1SQ?oc=5" target="_blank" class="source-link">mt.co.kr</a></li>
+    <li><strong>상태:</strong> 진행 중 (SK실트론 인수 자금 확보 위한 두산로보틱스 지분 매각)</li>
+    <li><strong>링크:</strong> <a href="https://news.google.com/rss/articles/CBMiWkFVX3lxTE9yZ09lS2p5Y0xIcEFkbkpFVlJyQkR4cEtxZnVBaUhaY3QxRGxrdUpVMmJQbGhZdkpuVXRYVEtfNERiaE5aZUoxUjd1VmZwMjdvaEQwbzRENWlPUdIBVEFVX3lxTE9jenVSSUh0UFJzNEJqdm5ickFxdmVTR1BRRVctaGxJQUVGT1kwOWl1bE9zLW15T09fVFhMTndpUU5PVC0zV1F5YmVTa19qYXBuX0xneQ?oc=5" target="_blank" class="source-link">한국경제</a> <a href="https://news.google.com/rss/articles/CBMiZkFVX3lxTE56UDEzbXAzNlo3VjdDLVlWb2RXcVVVVkZQWUhzT2FBeHQ2a042cDR0al8yek9jQmhxOGk5OVVXbHZvcWNsZXBMcWthejZmbXpzT2I5UlFzSURGT01CMzZqUWVVU0lPUQ?oc=5" target="_blank" class="source-link">디일렉</a> <a href="https://news.google.com/rss/articles/CBMijwFBVV95cUxPUHJGVWhPVEs5TnMxajJKZHlGNDVzd1JzS245eVJEQVYxb1lVVzhnbXc1dGRNMnFFNVRsQ1pyZ3BoTS1Hek5QaXR4QXl0RXpzZ3lxdkZCb1lyU2RkcFRvYmpCMWM2b0toMDJLMmp1VlFqamoxUThXN3V1TDEwcklNRjhtUnlzOEtmU3Bvd0h0NNIBowFBVV95cUxPS1BLeHJoTi16aGR3OVVueVlzb25SYmxqbHExUHZrUVBkeXhGeU5GcHh2UldQYmk3MFdDWV9oYXE3V00wVGR3WHBKWWNUXzJiUzVwX0pKNHFwR3VOdy1nNjB3dkNLeUF6QjgxTkdZTkpabENudzYwNlY5R0xWT05BQlNTR2tiMTZhcE9hSS1Qd19mZXlBekVrYTNVYjR3UUx3cHRZ?oc=5" target="_blank" class="source-link">조선일보</a></li>
   </ul>
   <h4>핵심 요약</h4>
   <ul>
-    <li>두산그룹이 SK실트론 인수를 추진하며, 이 자금을 마련하기 위해 두산로보틱스 지분 일부를 매각하여 약 9470억~9500억 원을 확보했다.</li>
-    <li>두산그룹은 SK실트론 인수를 통해 반도체 전·후공정 사업을 강화하고 사업 포트폴리오를 확장할 계획이다.</li>
-  </ul>
-</div>
-
-<div class="deal-card" data-category="반도체">
-  <div class="card-header">
-    <span class="category-badge">반도체</span>
-    <h3>🎯 에이팩트 경영권 매각 관련 소식</h3>
-  </div>
-  <ul>
-    <li><strong>주체:</strong> (매각 주체 불특정, 현 대주주로 추정)</li>
-    <li><strong>상태:</strong> 추진 중</li>
-    <li><strong>링크:</strong> <a href="https://news.google.com/rss/articles/CBMiaEFVX3lxTE1MWXQyOXlKTGJzUHBVM0wtQlprOHctcWlpeXhybkc1eGdIMUR2LVNLejZjSy0tNEppQ1BJLUFCamxRUFM1ZjA5REttNGo1emVpWC1KQjBoSjh3TGU1dWRKMjlUMEE2OHJS0gFsQVVfeXFMTVp5NHFfbGdhNnFaU2Y3eTBRUWFBZ0dLTXB4Rm1Temo5eVFxeDhrWWVlSmNuanZURHFNaU9lX2NNV1Y1OWN3djMyYkw2d1I2Wl9LZmdvek9uSDhxVDRDb2hlWl9YRzd0VERLUHcw?oc=5" target="_blank" class="source-link">블로터</a> <a href="https://news.google.com/rss/articles/CBMia0FVX3lxTE9vdzVqd1UxenJWbklwNFlTNUJMUm1iZWZXbUpBWlUtVXBIVDB4VWJhR0xlTFdDV3VrUTM5c0lCTlJheGxsZFY3Z0NXZFVvcU5WVk9OZ3Uyd3YyMUxsbGFyU254X0dBZVhIMDZ3?oc=5" target="_blank" class="source-link">numbers.co.kr</a></li>
-  </ul>
-  <h4>핵심 요약</h4>
-  <ul>
-    <li>반도체 후공정 전문업체 에이팩트가 3000억 원 규모의 경영권 매각을 추진 중이다.</li>
-    <li>이번 매각은 에이팩트에게 세 번째 주인의 손바뀜이 될 전망이다.</li>
-  </ul>
-</div>
-
-<div class="deal-card" data-category="반도체">
-  <div class="card-header">
-    <span class="category-badge">반도체</span>
-    <h3>🎯 한투파의 칩스앤미디어 매각 추진 및 볼트온 M&A 관련 소식</h3>
-  </div>
-  <ul>
-    <li><strong>주체:</strong> 한국투자파트너스(한투파)</li>
-    <li><strong>상태:</strong> 추진 중</li>
-    <li><strong>링크:</strong> <a href="https://news.google.com/rss/articles/CBMiS1FVX3lxTE9QMmt6bnhfc2tjaGhDSnFmQ3k2TWJrZi05Q3dqTWN2bnh2anJxSDRuclhCRDRJbzFUR3FVVVdIYzBwREtwYU9wTjd6NA?oc=5" target="_blank" class="source-link">v.daum.net</a></li>
-  </ul>
-  <h4>핵심 요약</h4>
-  <ul>
-    <li>한국투자파트너스(한투파)가 반도체 IP 기업 칩스앤미디어 매각을 추진하고 있다.</li>
-    <li>동시에 한투파는 '볼트온 M&A'를 통해 새로운 성장 동력을 확보할 계획을 밝혀, 반도체 분야 내 추가적인 인수 가능성을 시사했다.</li>
+    <li>두산그룹이 SK실트론 인수를 추진하며 반도체 전·후 공정 사업을 완성하는 그림을 그리고 있다.</li>
+    <li>SK실트론 인수 자금 확보를 위해 자회사 두산로보틱스 지분 일부를 매각하여 약 9470억~9500억원의 실탄을 확보했다.</li>
   </ul>
 </div>
 
 <div class="deal-card" data-category="바이오">
   <div class="card-header">
     <span class="category-badge">바이오</span>
-    <h3>🎯 유투바이오의 SML메디트리 지분 투자 관련 소식</h3>
+    <h3>🎯 [2026.01.09] 유투바이오, SML메디트리에 지분 투자 소식</h3>
   </div>
   <ul>
     <li><strong>주체:</strong> 유투바이오</li>
@@ -112,15 +71,100 @@
   </ul>
   <h4>핵심 요약</h4>
   <ul>
-    <li>유투바이오가 SML메디트리에 63억 원을 투자하여 지분 84%를 확보했다.</li>
-    <li>이를 통해 유투바이오는 SML메디트리를 자회사로 편입하게 되었다.</li>
+    <li>유투바이오가 SML메디트리에 63억원을 투자하여 지분 84%를 확보했다.</li>
+    <li>이번 투자를 통해 유투바이오는 SML메디트리의 최대주주가 되어 사업 시너지를 모색할 것으로 보인다.</li>
+  </ul>
+</div>
+
+<div class="deal-card" data-category="기타">
+  <div class="card-header">
+    <span class="category-badge">기타</span>
+    <h3>🎯 [2026.01.20] 광천김 지분 매각 불발 후 IPO 선회 소식</h3>
+  </div>
+  <ul>
+    <li><strong>주체:</strong> 광천김</li>
+    <li><strong>상태:</strong> 불발 (매각), 선회 (IPO)</li>
+    <li><strong>링크:</strong> <a href="https://news.google.com/rss/articles/CBMiVEFVX3lxTE9tUTlvTjY2UVh3UzU3YTVXLWxpd3RGZm8weURscGdiWFF0Y3VCSG81dng4SENDWFZlREh0QnFYTFRMUW92MGFXRzlaOXhmaktIcDRvZw?oc=5" target="_blank" class="source-link">이투데이</a></li>
+  </ul>
+  <h4>핵심 요약</h4>
+  <ul>
+    <li>'검은 반도체'로 불리는 광천김이 최근 지분 매각을 추진했으나 불발된 것으로 알려졌다.</li>
+    <li>지분 매각이 어려워지자 기업공개(IPO)로 선회하여 기대 기업가치를 인정받을지 주목된다.</li>
+  </ul>
+</div>
+
+<div class="deal-card" data-category="반도체">
+  <div class="card-header">
+    <span class="category-badge">반도체</span>
+    <h3>🎯 [2026.02.04] 에이팩트 경영권 매각 추진 소식</h3>
+  </div>
+  <ul>
+    <li><strong>주체:</strong> 에이팩트</li>
+    <li><strong>상태:</strong> 추진 중</li>
+    <li><strong>링크:</strong> <a href="https://news.google.com/rss/articles/CBMia0FVX3lxTE9vdzVqd1UxenJWbklwNFlTNUJMUm1iZWZXbUpBWlUtVXBIVDB4VWJhR0xlTFdDV3VrUTM5c0lCTlJheGxsZFY3Z0NXZFVvcU5WVk9OZ3Uyd3YyMUxsbGFyU254X0dBZVhIMDZ3?oc=5" target="_blank" class="source-link">numbers.co.kr</a> <a href="https://news.google.com/rss/articles/CBMiaEFVX3lxTE1MWXQyOXlKTGJzUHBVM0wtQlprOHctcWlpeXhybkc1eGdIMUR2LVNLejZjSy0tNEppQ1BJLUFCamxRUFM1ZjA5REttNGo1emVpWC1KQjBoSjh3TGU1dWRKMjlUMEE2OHJS0gFsQVVfeXFMTVp5NHFfbGdhNnFaU2Y3eTBRUWFBZ0dLTXB4Rm1Temo5eVFxeDhrWWVlSmNuanZURHFNaU9lX2NNV1Y1OWN3djMyYkw2d1I2Wl9LZkdvek9uSDhxVDRDb2hlWl9YRzd0VERLUHcw?oc=5" target="_blank" class="source-link">블로터</a></li>
+  </ul>
+  <h4>핵심 요약</h4>
+  <ul>
+    <li>반도체 후공정 기업 에이팩트가 경영권 매각을 추진하고 있다.</li>
+    <li>에이팩트는 약 3000억원 규모의 매물로 시장에 나왔으며, 세 번째 손바뀜을 앞두고 있다.</li>
+  </ul>
+</div>
+
+<div class="deal-card" data-category="기타">
+  <div class="card-header">
+    <span class="category-badge">기타</span>
+    <h3>🎯 [2026.02.20] 삼성SDI 디스플레이 자산 매각 검토 소식</h3>
+  </div>
+  <ul>
+    <li><strong>주체:</strong> 삼성SDI</li>
+    <li><strong>상태:</strong> 검토 중</li>
+    <li><strong>링크:</strong> <a href="https://news.google.com/rss/articles/CBMigwFBVV95cUxOcmMyYlg3aldXZkwxSUI1emF3SkZLT0c1M3FzY0E5aE9maW0zY0RISFY1MEwtTzBTTjJzRmZWU0VXMVM4aG9GbXFaZHFoQzg5ZkdlampveXN0SVRjWFFIZTN1ZmpzdWZYUG5RX0VEanNlOVhVU20wZkJILTZDTEp1RHJnYw?oc=5" target="_blank" class="source-link">인베스트조선</a></li>
+  </ul>
+  <h4>핵심 요약</h4>
+  <ul>
+    <li>삼성SDI가 유동성 확보를 위해 디스플레이 사업부 또는 관련 자산 매각을 검토 중인 것으로 알려졌다.</li>
+    <li>만약 삼성전자가 매수 주체로 나설 경우, 계열사 간 거래의 공정성 논란이 제기될 수 있다는 지적이 나왔다.</li>
+  </ul>
+</div>
+
+<div class="deal-card" data-category="기타">
+  <div class="card-header">
+    <span class="category-badge">기타</span>
+    <h3>🎯 [2026.02.24] 비츠로그룹 조직 재편 소식</h3>
+  </div>
+  <ul>
+    <li><strong>주체:</strong> 비츠로그룹</li>
+    <li><strong>상태:</strong> 진행 중</li>
+    <li><strong>링크:</strong> <a href="https://news.google.com/rss/articles/CBMiRkFVX3lxTE02bUhJRk9ya2hmLUFZX0cwT1RfRUcxM0l4dlpybTNRajVabmYzU3VHT1hMb3k4X0xFc190aUYtT1hPcVdTNUE?oc=5" target="_blank" class="source-link">v.daum.net</a></li>
+  </ul>
+  <h4>핵심 요약</h4>
+  <ul>
+    <li>비츠로그룹이 사업 구조 효율화 및 재무 개선을 위해 계열사 쪼개기, 합병, 매각 등을 포함한 분주한 조직 재편을 진행하고 있다.</li>
+    <li>다양한 사업 부문을 아우르는 그룹 차원의 변화로 보인다.</li>
+  </ul>
+</div>
+
+<div class="deal-card" data-category="반도체">
+  <div class="card-header">
+    <span class="category-badge">반도체</span>
+    <h3>🎯 [2026.03.12] 한투파, 칩스앤미디어 매각 추진 소식</h3>
+  </div>
+  <ul>
+    <li><strong>주체:</strong> 한국투자파트너스(한투파)</li>
+    <li><strong>상태:</strong> 추진 중</li>
+    <li><strong>링크:</strong> <a href="https://news.google.com/rss/articles/CBMiS1FVX3lxTE9QMmt6bnhfc2tjaGhDSnFmQ3k2TWJrZi05Q3dqTWN2bnh2anJxSDRuclhCRDRJbzFUR3FVVVdIYzBwREtwYU9wTjd6NA?oc=5" target="_blank" class="source-link">v.daum.net</a></li>
+  </ul>
+  <h4>핵심 요약</h4>
+  <ul>
+    <li>한국투자파트너스(한투파)가 보유 중인 반도체 IP 기업 칩스앤미디어의 매각을 시동 걸었다.</li>
+    <li>기존 포트폴리오 기업의 가치를 높이는 '볼트온 M&A' 방식도 함께 고려하고 있는 것으로 알려졌다.</li>
   </ul>
 </div>
 
 <div class="deal-card" data-category="바이오">
   <div class="card-header">
     <span class="category-badge">바이오</span>
-    <h3>🎯 JW홀딩스의 바이오 전문 VC 인수 관련 소식</h3>
+    <h3>🎯 [2026.03.13] JW홀딩스, 바이오 전문 VC 인수 소식</h3>
   </div>
   <ul>
     <li><strong>주체:</strong> JW홀딩스</li>
@@ -130,58 +174,7 @@
   <h4>핵심 요약</h4>
   <ul>
     <li>JW홀딩스가 바이오 전문 벤처캐피탈(VC)을 인수했다.</li>
-    <li>이번 인수를 통해 JW홀딩스는 오픈 이노베이션 투자를 확대하고 신사업 발굴에 나설 계획이다.</li>
-  </ul>
-</div>
-
-<div class="deal-card" data-category="기타">
-  <div class="card-header">
-    <span class="category-badge">기타</span>
-    <h3>🎯 광천김 지분 매각 불발 후 IPO 선회 관련 소식</h3>
-  </div>
-  <ul>
-    <li><strong>주체:</strong> (매각 주체 불특정)</li>
-    <li><strong>상태:</strong> 불발 후 IPO 선회</li>
-    <li><strong>링크:</strong> <a href="https://news.google.com/rss/articles/CBMiVEFVX3lxTE9tUTlvTjY2UVh3UzU3YTVXLWxpd3RGZm8weURscGdiWFF0Y3VCSG81dng4SENDWFZlREg0QnFYTFRMUW92MGFXRzlaOXhmaktIcDRvZw?oc=5" target="_blank" class="source-link">이투데이</a></li>
-  </ul>
-  <h4>핵심 요약</h4>
-  <ul>
-    <li>'검은 반도체'로 불리는 광천김의 지분 매각 논의가 불발되면서, 기업공개(IPO)로 방향을 선회했다.</li>
-    <li>이를 통해 시장에서 기대하는 기업가치를 인정받을지 주목된다.</li>
-  </ul>
-</div>
-
-<div class="deal-card" data-category="기타">
-  <div class="card-header">
-    <span class="category-badge">기타</span>
-    <h3>🎯 삼성SDI 디스플레이 사업 관련 유동성 해법 모색 소식</h3>
-  </div>
-  <ul>
-    <li><strong>주체:</strong> 삼성SDI, 삼성전자 (잠재적 인수/협력)</li>
-    <li><strong>상태:</strong> 검토/논의 중</li>
-    <li><strong>링크:</strong> <a href="https://news.google.com/rss/articles/CBMigwFBVV95cUxOcmMyYlg3aldXZkwxSUI1emF3SkZLT0c1M3FzY0E5aE9maW0zY0RISFY1MEwtTzBTTjJzRmZWU0VXMVM4aG9GbXFaZHFoQzg5ZkdlampveXN0SVRjWFFIZTN1ZmpzdWZYUG5RX0VEanNlOVhVU20wZkJILTZDTEp1RHJnYw?oc=5" target="_blank" class="source-link">인베스트조선</a></li>
-  </ul>
-  <h4>핵심 요약</h4>
-  <ul>
-    <li>삼성SDI가 디스플레이 사업과 관련하여 유동성 해법을 모색하고 있다.</li>
-    <li>특히 삼성전자가 관여하여 지분 등을 인수할 경우 공정성 문제가 제기될 수 있다는 의견이 나오고 있다.</li>
-  </ul>
-</div>
-
-<div class="deal-card" data-category="기타">
-  <div class="card-header">
-    <span class="category-badge">기타</span>
-    <h3>🎯 비츠로그룹의 조직 재편 (매각 포함) 관련 소식</h3>
-  </div>
-  <ul>
-    <li><strong>주체:</strong> 비츠로그룹</li>
-    <li><strong>상태:</strong> 진행 중</li>
-    <li><strong>링크:</strong> <a href="https://news.google.com/rss/articles/CBMiRkFVX3lxTE02bUhJRk9ya2hmLUFZX0cwT1RfRUcxM0l4dlpybTNRajVabmYzU3VHT1hMb3k4X0xFc190aUYtT1hPcVdTNUE?oc=5" target="_blank" class="source-link">v.daum.net</a></li>
-  </ul>
-  <h4>핵심 요약</h4>
-  <ul>
-    <li>비츠로그룹이 '쪼개고 묶고 파는' 등의 방식으로 대대적인 조직 재편을 진행 중이다.</li>
-    <li>이는 사업 포트폴리오 효율화 및 신성장 동력 확보를 위한 전략의 일환으로 보인다.</li>
+    <li>이번 인수를 통해 JW홀딩스는 오픈 이노베이션 투자를 확대하고 신기술 발굴 및 협력 강화를 모색할 계획이다.</li>
   </ul>
 </div></div>
     </div>
