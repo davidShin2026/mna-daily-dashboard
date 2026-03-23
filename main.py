@@ -18,16 +18,16 @@ except Exception as e:
     print(f"모델 설정 에러: {e}")
     raise e
 
-# 2. 구글 뉴스 초압축 스나이퍼 쿼리 (IP 차단 방지를 위해 단 3번만 호출)
-# 국내 100개 이상 언론사의 6개월 치 기사를 한 번에 검색합니다.
+# 2. 네이버 뉴스 검색 RSS 기반 쿼리 설정
+# 구글 차단을 피해 국내 딜 데이터가 가장 많은 네이버를 활용합니다.
 queries = [
-    '반도체 ("M&A" OR "인수합병" OR "경영권" OR "지분 인수" OR "매각" OR "IPO") when:6m',
-    '바이오 ("M&A" OR "인수합병" OR "경영권" OR "지분 인수" OR "매각" OR "IPO") when:6m',
-    '(배터리 OR 이차전지) ("M&A" OR "인수합병" OR "경영권" OR "지분 인수" OR "매각" OR "IPO") when:6m'
+    "반도체 M&A", "반도체 인수합병", "반도체 경영권 매각", "반도체 지분 인수",
+    "바이오 M&A", "바이오 인수합병", "바이오 경영권 매각", "바이오 지분 인수",
+    "배터리 M&A", "배터리 인수합병", "이차전지 경영권 매각", "이차전지 지분 인수"
 ]
 
-# 가짜 딜(내부 투자)을 걸러내는 강력한 블랙리스트 (네거티브 필터링)
-exclude_keywords = ["설비", "시설", "연구개발", "R&D", "공장", "증설", "자사주", "채용", "사옥", "실적", "영업이익"]
+# 가짜 딜(내부 투자)을 걸러내는 블랙리스트 (네거티브 필터링)
+exclude_keywords = ["설비", "시설", "연구개발", "R&D", "공장", "증설", "자사주", "채용", "사옥", "실적", "영업이익", "주가"]
 
 news_context = ""
 idx = 1
@@ -38,8 +38,9 @@ headers = {
 }
 
 for q in queries:
+    # 네이버 RSS 검색 URL 조립
     encoded_query = urllib.parse.quote(q)
-    url = f"https://news.google.com/rss/search?q={encoded_query}&hl=ko&gl=KR&ceid=KR:ko"
+    url = f"https://newssearch.naver.com/search.naver?where=rss&query={encoded_query}"
     
     try:
         response = requests.get(url, headers=headers, timeout=10)
@@ -47,11 +48,12 @@ for q in queries:
         if response.status_code == 200:
             root = ET.fromstring(response.text)
             
-            # 각 섹터당 가장 연관도 높은 상위 15개 기사 정밀 탐색
+            # 각 쿼리당 연관도 높은 상위 15개 기사 정밀 탐색
             for item in root.findall('.//item')[:15]:
                 title = item.find('title').text
                 link = item.find('link').text
-                pub_date = item.find('pubDate').text
+                pub_date_elem = item.find('pubDate')
+                pub_date = pub_date_elem.text if pub_date_elem is not None else "최근"
                 
                 # 파이썬 1차 뜰채: 블랙리스트 단어가 제목에 있으면 즉시 버림
                 if any(bad_word in title for bad_word in exclude_keywords):
@@ -62,8 +64,8 @@ for q in queries:
                     news_context += f"[{idx}] 제목: {title}\n날짜: {pub_date}\n링크: {link}\n\n"
                     idx += 1
                     
-        # 구글 서버를 자극하지 않기 위해 3초간 휴식
-        time.sleep(3)
+        # 네이버 서버를 자극하지 않기 위해 1.5초간 휴식
+        time.sleep(1.5)
         
     except Exception as e:
         print(f"[{q}] 파싱 에러: {e}")
@@ -72,11 +74,10 @@ for q in queries:
 if not news_context.strip():
     deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 뉴스 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</h3></div>"
 else:
-    # 3. AI 2차 분석 엔진 (진짜 자본 거래만 엄선)
+    # 3. AI 2차 분석 엔진 (진짜 자본 거래만 엄선하여 요약)
     prompt = f"""
     당신은 글로벌 IB의 시니어 M&A 애널리스트입니다. 
     제공된 뉴스 리스트에서 '반도체, 바이오, 배터리' 관련 '타 기업 인수, 합병, 경영권 매각, 지분 투자, 상장(IPO)' 소식만을 엄격하게 선별하여 요약하세요. 
-    기업의 단순 설비 투자, 공장 신설, 신제품 출시 기사는 절대 포함하지 마세요.
 
     [뉴스 데이터]
     {news_context}
