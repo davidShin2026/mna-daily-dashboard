@@ -26,6 +26,8 @@ jobs:
       - name: 파이썬 스크립트 실행 (웹페이지 생성)
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
         run: python main.py
 
       - name: 변경된 웹페이지를 저장소에 반영
