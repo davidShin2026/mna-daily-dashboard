@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 import google.generativeai as genai
 from datetime import datetime
 import pytz
+import urllib.parse
 
 # 1. API 키 설정
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
@@ -16,48 +17,72 @@ except Exception as e:
     print(f"모델 설정 에러: {e}")
     raise e
 
-# 2. 검색 쿼리 리스트
+# 2. 검색 쿼리 전면 확장 (다양한 투자/M&A 키워드 적용)
+# 섹터별로 발생할 수 있는 모든 형태의 자본 거래를 포괄합니다.
 queries = [
-    "반도체 인수합병 매각 지분투자",
-    "바이오 헬스케어 인수합병 투자",
-    "이차전지 배터리 인수합병 매각"
+    # 반도체
+    "반도체 M&A OR 인수 OR 매각 OR Exit",
+    "반도체 지분 OR 경영권 OR 투자",
+    "반도체 IPO OR 상장 OR Pre-IPO",
+    "반도체 시리즈A OR 시리즈B OR 시리즈C OR 시드",
+    # 바이오
+    "바이오 M&A OR 인수 OR 매각 OR Exit",
+    "바이오 지분 OR 경영권 OR 투자",
+    "바이오 IPO OR 상장 OR Pre-IPO",
+    "바이오 시리즈A OR 시리즈B OR 시리즈C OR 시드",
+    # 배터리 (이차전지 포함)
+    "배터리 M&A OR 인수 OR 매각 OR Exit",
+    "배터리 지분 OR 경영권 OR 투자",
+    "배터리 IPO OR 상장 OR Pre-IPO",
+    "배터리 시리즈A OR 시리즈B OR 시리즈C OR 시드",
+    "이차전지 인수 OR 매각 OR 투자 OR 상장"
 ]
 
 news_context = ""
 idx = 1
+seen_links = set() # 중복 기사 필터링용
 
 for q in queries:
-    rss_url = f"https://news.google.com/rss/search?q={q}&hl=ko&gl=KR&ceid=KR:ko"
+    # 6개월 조건(when:6m) 추가 및 안전한 URL 인코딩 적용
+    query_with_time = f"{q} when:6m"
+    encoded_query = urllib.parse.quote(query_with_time)
+    rss_url = f"https://news.google.com/rss/search?q={encoded_query}&hl=ko&gl=KR&ceid=KR:ko"
+    
     try:
         response = requests.get(rss_url, timeout=10)
         root = ET.fromstring(response.text)
         
+        # 각 쿼리당 상위 15개씩 탐색
         for item in root.findall('.//item')[:15]:
             title = item.find('title').text
             link = item.find('link').text
             pub_date = item.find('pubDate').text
-            news_context += f"[{idx}] 제목: {title}\n날짜: {pub_date}\n링크: {link}\n\n"
-            idx += 1
+            
+            # 이미 수집한 기사 링크면 건너뜀 (토큰 절약 및 AI 혼동 방지)
+            if link not in seen_links:
+                seen_links.add(link)
+                news_context += f"[{idx}] 제목: {title}\n날짜: {pub_date}\n링크: {link}\n\n"
+                idx += 1
     except:
         continue
 
 if not news_context.strip():
     deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 뉴스 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</h3></div>"
 else:
-    # 3. AI 프롬프트 (날짜 헤드라인 추가 지시)
+    # 3. AI 프롬프트 (6개월 및 다양한 투자 단계 반영)
     prompt = f"""
     당신은 글로벌 IB의 M&A 애널리스트입니다. 
-    제공된 뉴스 리스트에서 '최근 3개월 이내'의 국내 M&A, 지분 투자, 매각 소식만 골라 요약하세요.
+    제공된 뉴스 리스트에서 '최근 6개월 이내'의 국내 반도체, 바이오, 배터리 관련 투자 및 M&A 소식만 골라 요약하세요.
 
     [뉴스 데이터]
     {news_context}
 
     [작성 규칙]
-    1. 반드시 '반도체', '바이오', '배터리', '기타' 카테고리로 분류하세요.
-    2. 동일 건에 대한 기사는 하나로 합치고 기사 원문 링크를 최대 3개까지 나열하세요.
-    3. 사족이나 인사말 없이 오직 HTML <div> 카드들만 출력하세요.
-    4. 진행 중인 사안(추진, 검토)도 포함하세요.
-    5. 기사의 '날짜' 데이터를 확인하여, 딜 발생 일자를 헤드라인(<h3>) 앞에 [YYYY.MM.DD] 형식으로 반드시 포함하세요. (여러 기사가 묶인 경우 가장 최근 날짜 사용)
+    1. 반드시 '반도체', '바이오', '배터리', '기타' 카테고리로 분류하세요. (이차전지는 '배터리'로 통일)
+    2. M&A, 지분 인수/매각, 경영권 변동, IPO, Pre-IPO, 시리즈 A/B/C, 시드 투자 등 모든 형태의 자본 거래를 빠짐없이 포함하세요.
+    3. 동일 건에 대한 기사는 하나로 합치고 기사 원문 링크를 최대 3개까지 나열하세요.
+    4. 사족이나 인사말 없이 오직 HTML <div> 카드들만 출력하세요.
+    5. 기사의 '날짜' 데이터를 확인하여, 딜 발생 일자를 헤드라인(<h3>) 앞에 [YYYY.MM.DD] 형식으로 반드시 포함하세요. 
     
     [출력 형식]
     <div class="deal-card" data-category="카테고리명">
@@ -67,7 +92,7 @@ else:
       </div>
       <ul>
         <li><strong>주체:</strong> [인수/투자자]</li>
-        <li><strong>상태:</strong> [진행상태]</li>
+        <li><strong>상태:</strong> [진행상태 (예: 시리즈A 투자 유치, 경영권 매각 완료 등)]</li>
         <li><strong>링크:</strong> <a href="URL1" target="_blank" class="source-link">기사1</a> <a href="URL2" target="_blank" class="source-link">기사2</a></li>
       </ul>
       <h4>핵심 요약</h4>
@@ -79,7 +104,7 @@ else:
     result = model.generate_content(prompt)
     deal_content = result.text.replace('```html', '').replace('```', '').strip()
 
-# 4. HTML 생성 (모바일 반응형 CSS 포함)
+# 4. HTML 생성 (기존 모바일 반응형 디자인 유지)
 kst = pytz.timezone('Asia/Seoul')
 today_str = datetime.now(kst).strftime("%Y년 %m월 %d일")
 
