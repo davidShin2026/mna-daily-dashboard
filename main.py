@@ -1,5 +1,6 @@
 import os
 import requests
+import urllib.parse
 import xml.etree.ElementTree as ET
 import google.generativeai as genai
 from datetime import datetime
@@ -17,12 +18,14 @@ except Exception as e:
     print(f"모델 설정 에러: {e}")
     raise e
 
-# 2. 검색 쿼리 잘게 쪼개기
+# 2. 검색 쿼리 최적화 (17개 -> 6개로 압축하여 구글 IP 차단 방지)
 queries = [
-    "반도체 인수합병", "반도체 지분투자", "반도체 경영권", "반도체 IPO 상장", "반도체 시리즈 투자",
-    "바이오 인수합병", "바이오 지분투자", "바이오 경영권", "바이오 IPO 상장", "바이오 시리즈 투자",
-    "배터리 인수합병", "배터리 지분투자", "배터리 경영권", "배터리 IPO 상장", "배터리 시리즈 투자",
-    "이차전지 매각", "이차전지 시드 투자"
+    "반도체 (M&A OR 인수합병 OR 매각 OR 지분투자 OR 경영권)",
+    "반도체 (IPO OR 상장 OR 시리즈 OR 시드 OR Pre-IPO)",
+    "바이오 (M&A OR 인수합병 OR 매각 OR 지분투자 OR 경영권)",
+    "바이오 (IPO OR 상장 OR 시리즈 OR 시드 OR Pre-IPO)",
+    "(배터리 OR 이차전지) (M&A OR 인수합병 OR 매각 OR 지분투자 OR 경영권)",
+    "(배터리 OR 이차전지) (IPO OR 상장 OR 시리즈 OR 시드 OR Pre-IPO)"
 ]
 
 news_context = ""
@@ -35,19 +38,22 @@ headers = {
 }
 
 for q in queries:
-    params = {
-        'q': f"{q} when:6m",
-        'hl': 'ko',
-        'gl': 'KR',
-        'ceid': 'KR:ko'
-    }
+    # 파이썬 자동 인코딩 오류 방지를 위해 URL을 직접 조립
+    encoded_query = urllib.parse.quote(f"{q} when:6m")
+    url = f"https://news.google.com/rss/search?q={encoded_query}&hl=ko&gl=KR&ceid=KR:ko"
     
     try:
-        response = requests.get("https://news.google.com/rss/search", params=params, headers=headers, timeout=10)
+        response = requests.get(url, headers=headers, timeout=10)
+        
+        # 정상 응답이 아닐 경우 다음 쿼리로 패스
+        if response.status_code != 200:
+            print(f"[{q}] 접속 에러: {response.status_code}")
+            continue
+            
         root = ET.fromstring(response.text)
         
-        # AI 프롬프트 과부하 방지를 위해 각 키워드당 상위 5개 기사만 추출
-        for item in root.findall('.//item')[:5]:
+        # 쿼리당 상위 12개씩 기사 추출 (다양한 딜 확보)
+        for item in root.findall('.//item')[:12]:
             title = item.find('title').text
             link = item.find('link').text
             pub_date = item.find('pubDate').text
@@ -57,15 +63,16 @@ for q in queries:
                 news_context += f"[{idx}] 제목: {title}\n날짜: {pub_date}\n링크: {link}\n\n"
                 idx += 1
                 
-        # 연속 요청으로 인한 IP 차단을 막기 위해 1초 대기
-        time.sleep(1)
+        # 연속 요청으로 인한 IP 차단을 막기 위해 2초 대기 (안정성 강화)
+        time.sleep(2)
         
     except Exception as e:
-        print(f"[{q}] 검색 실패: {e}")
+        print(f"[{q}] 파싱 에러: {e}")
         continue
 
+# 기사를 하나도 못 가져왔을 때의 예외 처리
 if not news_context.strip():
-    deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 뉴스 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</h3></div>"
+    deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 뉴스 데이터를 불러오지 못했습니다. 깃허브 Actions 로그를 확인해 주세요.</h3></div>"
 else:
     # 3. AI 프롬프트
     prompt = f"""
@@ -163,7 +170,3 @@ html_template = f"""
     </script>
 </body>
 </html>
-"""
-
-with open("index.html", "w", encoding="utf-8") as f:
-    f.write(html_template)
