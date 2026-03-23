@@ -27,15 +27,15 @@ headers = {
 }
 
 # 가짜 딜(단순 투자, 실적) 제외 필터
-exclude_keywords = ["설비", "시설", "연구개발", "R&D", "공장", "증설", "채용", "사옥", "실적", "영업이익"]
+exclude_keywords = ["설비", "시설", "공장", "증설", "채용", "사옥", "실적", "영업이익"]
 
 # ==========================================
-# 트랙 1: 구글 뉴스 (단순 쿼리로 6개월 치 과거 데이터 확보)
+# 트랙 1: 구글 뉴스 (단순 쿼리로 6개월 치 과거 데이터 확보 시도)
 # ==========================================
 google_queries = [
-    "반도체 M&A when:6m", "반도체 인수합병 when:6m", "반도체 지분인수 when:6m",
-    "바이오 M&A when:6m", "바이오 인수합병 when:6m",
-    "배터리 M&A when:6m", "이차전지 경영권 when:6m"
+    "반도체 M&A when:6m", "반도체 지분인수 when:6m",
+    "바이오 M&A when:6m", "바이오 투자유치 when:6m",
+    "배터리 M&A when:6m", "이차전지 합작회사 when:6m"
 ]
 
 for q in google_queries:
@@ -59,14 +59,15 @@ for q in google_queries:
         continue
 
 # ==========================================
-# 트랙 2: 10대 언론사 직통 RSS (구글 차단 대비 및 최신 딜 확보)
+# 트랙 2: 10대 언론사 직통 RSS (구글 차단 대비 및 최신 시그널 확보)
 # ==========================================
 media_rss = [
     "https://rss.hankyung.com/feed/economy.xml", "https://rss.hankyung.com/feed/it.xml",
     "https://www.mk.co.kr/rss/30100041/", "https://www.mk.co.kr/rss/50300009/", 
     "https://www.yna.co.kr/rss/economy.xml", "https://rss.etnews.com/Section902.xml"
 ]
-deal_keywords = ["인수", "합병", "M&A", "매각", "지분", "투자", "상장", "IPO"]
+# 파트너십, 합작, 시리즈 투자 등 초기 딜 시그널 키워드 대거 추가
+deal_keywords = ["인수", "합병", "M&A", "매각", "지분", "투자", "상장", "IPO", "MOU", "제휴", "합작", "조인트벤처", "JV", "시리즈"]
 
 for url in media_rss:
     try:
@@ -88,26 +89,26 @@ for url in media_rss:
         continue
 
 # ==========================================
-# 3. AI 분석 및 빈 응답 완벽 방어
+# 3. AI 분석 (유연한 딜 시그널 포착)
 # ==========================================
 if not news_context.strip():
     deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 뉴스 데이터를 불러오지 못했습니다. 서버 상태를 확인해 주세요.</h3></div>"
 else:
-    # 빈 응답을 막기 위한 명시적인 룰(규칙 1번) 추가
+    # 프롬프트 조건 완화: MOU, JV, 파트너십 등도 포함하도록 지시
     prompt = f"""
     당신은 글로벌 IB의 시니어 M&A 애널리스트입니다. 
-    제공된 뉴스 리스트에서 '반도체, 바이오, 배터리' 섹터의 '인수합병(M&A), 지분 투자, 경영권 매각, 상장(IPO)' 소식만을 엄격하게 골라 요약하세요. 
+    제공된 뉴스 리스트에서 '반도체, 바이오, 배터리' 섹터의 자본 거래 및 제휴 소식을 요약하세요.
 
     [뉴스 데이터]
     {news_context}
 
     [작성 규칙]
-    1. 조건에 맞는 진짜 자본 거래(M&A, 투자, 상장) 기사가 단 하나도 없다면, 절대 빈칸을 출력하지 말고 아래 코드를 그대로 출력하세요:
-       <div class='deal-card'><h3 style='color:#718096;'>🎯 오늘 조건에 맞는 진정한 M&A/투자 기사가 없습니다. (AI 딥 필터링 완료)</h3></div>
-    2. 조건에 맞는 기사가 있다면 반드시 '반도체', '바이오', '배터리', '기타' 카테고리로 분류하세요.
-    3. 동일 건에 대한 기사는 하나로 묶고 기사 링크를 나열하세요.
-    4. 사족이나 인사말 없이 오직 HTML <div> 카드들만 출력하세요.
-    5. 기사의 '날짜' 데이터를 확인하여, 딜 발생 일자를 헤드라인(<h3>) 앞에 [YYYY.MM.DD] 형식으로 포함하세요.
+    1. 완벽한 인수합병(M&A)이나 상장(IPO)뿐만 아니라, 딜의 전조가 될 수 있는 **'전략적 파트너십(MOU)', '조인트벤처(JV) 설립', '초기 지분 투자 및 시리즈 유치', '펀드 결성'** 소식도 적극적으로 포함하세요.
+    2. 조건에 맞는 기사가 단 하나도 없다면, 절대 빈칸을 출력하지 말고 아래 코드를 출력하세요:
+       <div class='deal-card'><h3 style='color:#718096;'>🎯 오늘 업데이트된 M&A 및 전략적 제휴 소식이 없습니다.</h3></div>
+    3. 조건에 맞는 기사가 있다면 반드시 '반도체', '바이오', '배터리', '기타' 카테고리로 분류하세요.
+    4. 동일 건에 대한 기사는 하나로 묶고 기사 링크를 나열하세요.
+    5. 사족 없이 오직 HTML <div> 카드들만 출력하고, 딜 발생 일자를 헤드라인(<h3>) 앞에 [YYYY.MM.DD] 형식으로 포함하세요.
     
     [출력 형식]
     <div class="deal-card" data-category="카테고리명">
@@ -116,8 +117,8 @@ else:
         <h3>🎯 [YYYY.MM.DD] [대상 업체명] 관련 소식</h3>
       </div>
       <ul>
-        <li><strong>주체:</strong> [인수/투자자]</li>
-        <li><strong>상태:</strong> [진행상태]</li>
+        <li><strong>주체:</strong> [인수/투자/제휴사]</li>
+        <li><strong>상태:</strong> [진행상태 (예: MOU 체결, 시리즈A 유치 등)]</li>
         <li><strong>링크:</strong> <a href="URL1" target="_blank" class="source-link">기사1</a></li>
       </ul>
       <h4>핵심 요약</h4>
@@ -137,11 +138,10 @@ else:
         
         result = model.generate_content(prompt, safety_settings=safety_settings)
         
-        # result.text가 비어있어도 파이썬이 뻗지 않도록 이중 방어막 설치
         if hasattr(result, 'text') and result.text.strip():
             deal_content = result.text.replace('```html', '').replace('```', '').strip()
         else:
-            deal_content = "<div class='deal-card'><h3 style='color:#718096;'>🎯 오늘 조건에 맞는 진정한 M&A/투자 기사가 없습니다. (AI 딥 필터링 완료)</h3></div>"
+            deal_content = "<div class='deal-card'><h3 style='color:#718096;'>🎯 오늘 업데이트된 M&A 및 전략적 제휴 소식이 없습니다.</h3></div>"
             
     except Exception as e:
         deal_content = f"<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 AI 요약 중 에러가 발생했습니다: {e}</h3></div>"
