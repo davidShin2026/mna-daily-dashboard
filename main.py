@@ -5,6 +5,7 @@ import google.generativeai as genai
 from datetime import datetime
 import pytz
 import time
+import urllib.parse
 
 # 1. API 키 설정
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
@@ -20,81 +21,84 @@ except Exception as e:
 # 2. 검색 쿼리 잘게 쪼개기 (구글 RSS 에러 방지 및 다양성 확보)
 queries = [
     # 반도체/소부장
-    "반도체 M&A 매각 인수 Exit",
-    "반도체 지분 투자",
-    "반도체 IPO 상장 Pre-IPO",
-    "반도체 시리즈A 시리즈B 시리즈C 시드 투자",
-    "소부장 기업 인수",
+    "반도체 M&A OR 인수 OR 매각 OR Exit",
+    "반도체 지분 OR 경영권 OR 투자",
+    "반도체 IPO OR 상장 OR Pre-IPO",
+    "반도체 시리즈A OR 시리즈B OR 시리즈C OR 시드 투자",
     # 바이오/헬스케어
-    "바이오 M&A 매각 인수 Exit",
-    "바이오 지분 투자",
-    "바이오 IPO 상장 Pre-IPO",
-    "바이오 시리즈A 시리즈B 시리즈C 시드 투자",
-    "신약 개발사 인수",
+    "바이오 M&A OR 인수 OR 매각 OR Exit",
+    "바이오 지분 OR 경영권 OR 투자",
+    "바이오 IPO OR 상장 OR Pre-IPO",
+    "바이오 시리즈A OR 시리즈B OR 시리즈C OR 시드 투자",
     # 배터리/이차전지
-    "배터리 M&A 매각 인수 Exit",
-    "이차전지 지분 투자",
-    "이차전지 IPO 상장 Pre-IPO",
-    "이차전지 시리즈A 시리즈B 시리즈C 시드 투자",
-    "배터리 재활용 M&A",
-    "소재 기업 인수"
+    "배터리 M&A OR 인수 OR 매각 OR Exit",
+    "이차전지 지분 OR 경영권 OR 투자",
+    "이차전지 IPO OR 상장 OR Pre-IPO",
+    "이차전지 시리즈A OR 시리즈B OR 시리즈C OR 시드 투자"
 ]
 
 news_context = ""
 idx = 1
 seen_links = set()
 
-# 구글 봇 차단 우회를 위한 User-Agent
+# 구글 봇 차단 우회를 위한 스텔스 엔진 설정
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 }
 
 for q in queries:
-    # 6개월 조건(when:6m) 추가 및 안전한 인코딩을 위해 params 사용
-    params = {
-        'q': f"{q} when:6m",
-        'hl': 'ko',
-        'gl': 'KR',
-        'ceid': 'KR:ko'
-    }
+    # 6개월 조건(when:6m) 추가 및 안전한 인코딩을 위해 urllib.parse 사용
+    encoded_query = urllib.parse.quote(f"{q} when:6m")
+    url = f"https://news.google.com/rss/search?q={encoded_query}&hl=ko&gl=KR&ceid=KR:ko"
     
-    try:
-        response = requests.get("https://news.google.com/rss/search", params=params, headers=headers, timeout=10)
-        
-        # 정상 응답이 아닐 경우 다음 쿼리로 패스
-        if response.status_code != 200:
-            print(f"[{q}] 접속 에러: {response.status_code}")
-            continue
+    # 봇 차단 우회를 위한 리트라이 메커니즘 (with Exponential Backoff)
+    max_retries = 3
+    retry_delay = 3
+    
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
             
-        root = ET.fromstring(response.text)
-        
-        # 각 키워드당 상위 7개씩만 탐색
-        for item in root.findall('.//item')[:7]:
-            title = item.find('title').text
-            link = item.find('link').text
-            pub_date = item.find('pubDate').text
-            
-            # 중복 기사 제거
-            if link not in seen_links:
-                seen_links.add(link)
-                news_context += f"[{idx}] 제목: {title}\n날짜: {pub_date}\n링크: {link}\n\n"
-                idx += 1
+            # 성공 시 루프 탈출
+            if response.status_code == 200:
+                root = ET.fromstring(response.text)
+                # 각 쿼리당 상위 10개씩 골라 담기
+                for item in root.findall('.//item')[:10]:
+                    title = item.find('title').text
+                    link = item.find('link').text
+                    pub_date = item.find('pubDate').text
+                    
+                    if link not in seen_links:
+                        seen_links.add(link)
+                        news_context += f"[{idx}] 제목: {title}\n날짜: {pub_date}\n링크: {link}\n\n"
+                        idx += 1
+                break
                 
-        # 연속 요청으로 인한 IP 차단을 막기 위해 1.5초 대기
-        time.sleep(1.5)
-        
-    except Exception as e:
-        print(f"[{q}] 파싱 에러: {e}")
-        continue
+            # 봇 차단(429 또는 403) 시 대기 후 재시도
+            elif response.status_code in [429, 403]:
+                print(f"[Attempt {attempt+1}/{max_retries}] 구글 서버 차단: {q}. {retry_delay}초 후 재시도합니다.")
+                time.sleep(retry_delay)
+                retry_delay *= 2 # Exponential backoff (3s -> 6s -> 12s)
+            
+            else:
+                print(f"[Attempt {attempt+1}/{max_retries}] 접속 실패: {q}. {response.status_code}")
+                break
+                
+        except Exception as e:
+            print(f"[{q}] 파싱 에러: {e}")
+            break
+            
+    # 연속 요청으로 인한 IP 차단을 막기 위해 2초 대기 (안정성 강화)
+    time.sleep(2)
 
-# 3. 데이터 예외 처리 및 AI 요약
+# 기사를 하나도 못 가져왔을 때의 예외 처리
 if not news_context.strip():
     deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 뉴스 데이터를 불러오지 못했습니다. 깃허브 Actions 로그를 확인해 주세요.</h3></div>"
 else:
     # AI 프롬프트 (M&A New for ISU OI Team 요약 및 분류 지시)
     prompt = f"""
     당신은 글로벌 IB의 M&A 애널리스트입니다. 
-    제공된 뉴스 리스트에서 '최근 6개월 이내'의 국내 반도체, 바이오, 배터리 관련 투자 및 M&A 소식만 골라 요약하세요.
+    제공된 뉴스 리스트에서 국내 반도체, 바이오, 배터리 관련 투자 및 M&A 소식만 골라 요약하세요.
 
     [뉴스 데이터]
     {news_context}
@@ -102,9 +106,9 @@ else:
     [작성 규칙]
     1. 반드시 '반도체', '바이오', '배터리', '기타' 카테고리로 분류하세요. (이차전지는 '배터리'로 통일)
     2. M&A, 지분 인수/매각, 경영권 변동, IPO, Pre-IPO, 시리즈 A/B/C, 시드 투자 등 모든 형태의 자본 거래를 빠짐없이 포함하세요.
-    3. 동일 건에 대한 기사 원문 링크를 최대 3개까지 나열하세요.
+    3. 동일 건에 대한 기사는 하나로 합치고 기사 원문 링크를 나열하세요.
     4. 사족이나 인사말 없이 오직 HTML <div> 카드들만 출력하세요.
-    5. 기사의 '날짜' 데이터를 확인하여, 딜 발생 일자를 헤드라인(<h3>) 앞에 [YYYY.MM.DD] 형식으로 반드시 포함하세요. 
+    5. 기사의 '날짜' 데이터를 확인하여, 딜 발생 일자를 헤드라인(<h3>) 앞에 [YYYY.MM.DD] 형식으로 포함하세요. 
     
     [출력 형식]
     <div class="deal-card" data-category="카테고리명">
@@ -126,7 +130,7 @@ else:
     result = model.generate_content(prompt)
     deal_content = result.text.replace('```html', '').replace('```', '').strip()
 
-# 4. HTML 생성 (ISU OI Team 고도화 UI 디자인 적용)
+# 4. HTML 생성 (M&A News for ISU OI Team 고도화 UI 디자인 적용)
 kst = pytz.timezone('Asia/Seoul')
 today_str = datetime.now(kst).strftime("%Y년 %m월 %d일")
 
@@ -142,9 +146,9 @@ html_template = f"""
         .container {{ max-width: 900px; margin: auto; }}
         
         /* 헤더 고도화 (로고/제목 flexbox 적용) */
-        .header-container {{ display: flex; align-items: center; justify-content: center; margin-bottom: 25px; }}
-        .isu-logo {{ max-height: 40px; margin-right: 15px; vertical-align: middle; }}
-        .isu-title {{ margin: 0; font-size: 2em; color: #1a365d; }}
+        .header-container {{ display: flex; align-items: center; justify-content: center; margin-bottom: 25px; border-bottom: 2px solid #1a365d; padding-bottom: 15px; }}
+        .isu-logo {{ max-height: 45px; margin-right: 18px; vertical-align: middle; }}
+        .isu-title {{ margin: 0; font-size: 2.3em; color: #1a365d; }}
         
         .filter-container {{ display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 30px; }}
         .filter-btn {{ background: #e2e8f0; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-weight: bold; font-size: 1em; transition: 0.2s; }}
@@ -159,8 +163,9 @@ html_template = f"""
         @media (max-width: 600px) {{
             body {{ padding: 15px; }}
             h1 {{ font-size: 1.5em; }}
-            .isu-title {{ font-size: 1.5em; }}
-            .isu-logo {{ max-height: 30px; margin-right: 10px; }}
+            .isu-title {{ font-size: 1.6em; line-height: 1.2; text-align: center; }}
+            .header-container {{ flex-direction: column; }}
+            .isu-logo {{ max-height: 35px; margin-right: 0; margin-bottom: 10px; }}
             .filter-btn {{ padding: 12px 16px; font-size: 1.1em; flex-grow: 1; text-align: center; }}
             .deal-card {{ padding: 15px; }}
             .category-badge {{ padding: 3px 8px; font-size: 0.8em; margin-right: 10px; }}
@@ -171,7 +176,7 @@ html_template = f"""
 <body>
     <div class="container">
         <div class="header-container">
-            <img src="image_8.png" class="isu-logo" alt="ISU Group Logo">
+            <img src="ISU CI.png" class="isu-logo" alt="ISU Group Logo">
             <h1 class="isu-title">M&A News for ISU OI Team</h1>
         </div>
         <p style="text-align:center; font-weight:bold; color:#718096; margin-bottom: 25px;">업데이트: {today_str}</p>
