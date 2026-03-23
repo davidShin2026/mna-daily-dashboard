@@ -18,66 +18,84 @@ except Exception as e:
     print(f"모델 설정 에러: {e}")
     raise e
 
-# 2. 네이버 뉴스 검색 RSS 기반 쿼리 설정
-# 구글 차단을 피해 국내 딜 데이터가 가장 많은 네이버를 활용합니다.
-queries = [
-    "반도체 M&A", "반도체 인수합병", "반도체 경영권 매각", "반도체 지분 인수",
-    "바이오 M&A", "바이오 인수합병", "바이오 경영권 매각", "바이오 지분 인수",
-    "배터리 M&A", "배터리 인수합병", "이차전지 경영권 매각", "이차전지 지분 인수"
-]
-
-# 가짜 딜(내부 투자)을 걸러내는 블랙리스트 (네거티브 필터링)
-exclude_keywords = ["설비", "시설", "연구개발", "R&D", "공장", "증설", "자사주", "채용", "사옥", "실적", "영업이익", "주가"]
-
 news_context = ""
 idx = 1
 seen_titles = set()
 
 headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36'
 }
 
-for q in queries:
-    # 네이버 RSS 검색 URL 조립
-    encoded_query = urllib.parse.quote(q)
-    url = f"https://newssearch.naver.com/search.naver?where=rss&query={encoded_query}"
-    
+# 가짜 딜(단순 투자, 실적) 제외 필터
+exclude_keywords = ["설비", "시설", "연구개발", "R&D", "공장", "증설", "채용", "사옥", "실적", "영업이익"]
+
+# ==========================================
+# 트랙 1: 구글 뉴스 (단순 쿼리로 6개월 치 과거 데이터 확보)
+# ==========================================
+google_queries = [
+    "반도체 M&A when:6m", "반도체 인수합병 when:6m", "반도체 지분인수 when:6m",
+    "바이오 M&A when:6m", "바이오 인수합병 when:6m",
+    "배터리 M&A when:6m", "이차전지 경영권 when:6m"
+]
+
+for q in google_queries:
+    url = f"https://news.google.com/rss/search?q={urllib.parse.quote(q)}&hl=ko&gl=KR&ceid=KR:ko"
     try:
-        response = requests.get(url, headers=headers, timeout=10)
-        
+        response = requests.get(url, headers=headers, timeout=5)
         if response.status_code == 200:
             root = ET.fromstring(response.text)
-            
-            # 각 쿼리당 연관도 높은 상위 15개 기사 정밀 탐색
-            for item in root.findall('.//item')[:15]:
+            for item in root.findall('.//item')[:5]: # 쿼리당 핵심 5개씩
+                title = item.find('title').text
+                link = item.find('link').text
+                pub_date = item.find('pubDate').text
+                
+                if any(bad in title for bad in exclude_keywords): continue
+                if title not in seen_titles:
+                    seen_titles.add(title)
+                    news_context += f"[{idx}] 제목: {title}\n날짜: {pub_date}\n링크: {link}\n\n"
+                    idx += 1
+        time.sleep(1) # 차단 방지 휴식
+    except:
+        continue
+
+# ==========================================
+# 트랙 2: 10대 언론사 직통 RSS (구글 차단 대비 및 최신 딜 확보)
+# ==========================================
+media_rss = [
+    "https://rss.hankyung.com/feed/economy.xml", "https://rss.hankyung.com/feed/it.xml",
+    "https://www.mk.co.kr/rss/30100041/", "https://www.mk.co.kr/rss/50300009/", 
+    "https://www.yna.co.kr/rss/economy.xml", "https://rss.etnews.com/Section902.xml"
+]
+deal_keywords = ["인수", "합병", "M&A", "매각", "지분", "투자", "상장", "IPO"]
+
+for url in media_rss:
+    try:
+        response = requests.get(url, headers=headers, timeout=5)
+        if response.status_code == 200:
+            root = ET.fromstring(response.text)
+            for item in root.findall('.//item'):
                 title = item.find('title').text
                 link = item.find('link').text
                 pub_date_elem = item.find('pubDate')
                 pub_date = pub_date_elem.text if pub_date_elem is not None else "최근"
                 
-                # 파이썬 1차 뜰채: 블랙리스트 단어가 제목에 있으면 즉시 버림
-                if any(bad_word in title for bad_word in exclude_keywords):
-                    continue
-                    
-                if title not in seen_titles:
-                    seen_titles.add(title)
-                    news_context += f"[{idx}] 제목: {title}\n날짜: {pub_date}\n링크: {link}\n\n"
-                    idx += 1
-                    
-        # 네이버 서버를 자극하지 않기 위해 1.5초간 휴식
-        time.sleep(1.5)
-        
-    except Exception as e:
-        print(f"[{q}] 파싱 에러: {e}")
+                if title and any(k in title for k in deal_keywords) and not any(bad in title for bad in exclude_keywords):
+                    if title not in seen_titles and idx <= 60:
+                        seen_titles.add(title)
+                        news_context += f"[{idx}] 제목: {title}\n날짜: {pub_date}\n링크: {link}\n\n"
+                        idx += 1
+    except:
         continue
 
+# ==========================================
+# 3. AI 분석 및 HTML 생성
+# ==========================================
 if not news_context.strip():
-    deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 뉴스 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</h3></div>"
+    deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 뉴스 데이터를 불러오지 못했습니다. 서버 상태를 확인해 주세요.</h3></div>"
 else:
-    # 3. AI 2차 분석 엔진 (진짜 자본 거래만 엄선하여 요약)
     prompt = f"""
     당신은 글로벌 IB의 시니어 M&A 애널리스트입니다. 
-    제공된 뉴스 리스트에서 '반도체, 바이오, 배터리' 관련 '타 기업 인수, 합병, 경영권 매각, 지분 투자, 상장(IPO)' 소식만을 엄격하게 선별하여 요약하세요. 
+    제공된 뉴스 리스트에서 '반도체, 바이오, 배터리' 섹터의 '인수합병(M&A), 지분 투자, 경영권 매각, 상장(IPO)' 소식만을 엄격하게 골라 요약하세요. 
 
     [뉴스 데이터]
     {news_context}
@@ -96,19 +114,17 @@ else:
       </div>
       <ul>
         <li><strong>주체:</strong> [인수/투자자]</li>
-        <li><strong>상태:</strong> [진행상태 (예: 지분 인수 완료, 경영권 매각 추진 중 등)]</li>
-        <li><strong>링크:</strong> <a href="URL1" target="_blank" class="source-link">기사1</a> <a href="URL2" target="_blank" class="source-link">기사2</a></li>
+        <li><strong>상태:</strong> [진행상태]</li>
+        <li><strong>링크:</strong> <a href="URL1" target="_blank" class="source-link">기사1</a></li>
       </ul>
       <h4>핵심 요약</h4>
       <ul><li>내용1</li><li>내용2</li></ul>
     </div>
     """
-
     model = genai.GenerativeModel(chosen_model_name.replace('models/', ''))
     result = model.generate_content(prompt)
     deal_content = result.text.replace('```html', '').replace('```', '').strip()
 
-# 4. HTML 생성 (ISU OI Team 고도화 UI 유지)
 kst = pytz.timezone('Asia/Seoul')
 today_str = datetime.now(kst).strftime("%Y년 %m월 %d일")
 
@@ -122,21 +138,17 @@ html_template = f"""
     <style>
         body {{ font-family: 'Malgun Gothic', sans-serif; background-color: #f4f7f6; padding: 20px; }}
         .container {{ max-width: 900px; margin: auto; }}
-        
         .header-container {{ display: flex; align-items: center; justify-content: center; margin-bottom: 25px; border-bottom: 2px solid #1a365d; padding-bottom: 15px; }}
         .isu-logo {{ max-height: 45px; margin-right: 18px; vertical-align: middle; }}
         .isu-title {{ margin: 0; font-size: 2.3em; color: #1a365d; }}
-        
         .filter-container {{ display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 30px; }}
         .filter-btn {{ background: #e2e8f0; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-weight: bold; font-size: 1em; transition: 0.2s; }}
         .filter-btn.active {{ background: #1a365d; color: white; }}
-        
         .deal-card {{ background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; border-left: 5px solid #2b6cb0; line-height: 1.6; }}
         .card-header {{ display: flex; align-items: center; border-bottom: 2px solid #edf2f7; padding-bottom: 12px; margin-bottom: 15px; }}
         .category-badge {{ background: #ebf8fa; color: #319795; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: bold; margin-right: 15px; border: 1px solid #b2f5ea; }}
         .deal-card h3 {{ margin: 0; font-size: 1.25em; color: #2d3748; }}
         .source-link {{ color: #dd6b20; text-decoration: none; font-weight: bold; margin-right: 8px; background: #feebc8; padding: 3px 8px; border-radius: 4px; display: inline-block; margin-bottom: 4px; }}
-        
         @media (max-width: 600px) {{
             body {{ padding: 15px; }}
             h1 {{ font-size: 1.5em; }}
