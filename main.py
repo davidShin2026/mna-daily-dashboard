@@ -4,7 +4,6 @@ import xml.etree.ElementTree as ET
 import google.generativeai as genai
 from datetime import datetime
 import pytz
-import urllib.parse
 
 # 1. API 키 설정
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
@@ -17,59 +16,51 @@ except Exception as e:
     print(f"모델 설정 에러: {e}")
     raise e
 
-# 2. 검색 쿼리 전면 확장 (다양한 투자/M&A 키워드 적용)
-# 섹터별로 발생할 수 있는 모든 형태의 자본 거래를 포괄합니다.
+# 2. 검색 쿼리 잘게 쪼개기 (구글 RSS 에러 방지)
+# 특수문자(M&A의 & 등)와 OR 연산자를 제거하고 직관적인 단어 조합으로 분리했습니다.
 queries = [
-    # 반도체
-    "반도체 M&A OR 인수 OR 매각 OR Exit",
-    "반도체 지분 OR 경영권 OR 투자",
-    "반도체 IPO OR 상장 OR Pre-IPO",
-    "반도체 시리즈A OR 시리즈B OR 시리즈C OR 시드",
-    # 바이오
-    "바이오 M&A OR 인수 OR 매각 OR Exit",
-    "바이오 지분 OR 경영권 OR 투자",
-    "바이오 IPO OR 상장 OR Pre-IPO",
-    "바이오 시리즈A OR 시리즈B OR 시리즈C OR 시드",
-    # 배터리 (이차전지 포함)
-    "배터리 M&A OR 인수 OR 매각 OR Exit",
-    "배터리 지분 OR 경영권 OR 투자",
-    "배터리 IPO OR 상장 OR Pre-IPO",
-    "배터리 시리즈A OR 시리즈B OR 시리즈C OR 시드",
-    "이차전지 인수 OR 매각 OR 투자 OR 상장"
+    "반도체 인수합병", "반도체 지분투자", "반도체 경영권", "반도체 IPO 상장", "반도체 시리즈 투자",
+    "바이오 인수합병", "바이오 지분투자", "바이오 경영권", "바이오 IPO 상장", "바이오 시리즈 투자",
+    "배터리 인수합병", "배터리 지분투자", "배터리 경영권", "배터리 IPO 상장", "배터리 시리즈 투자",
+    "이차전지 매각", "이차전지 시드 투자"
 ]
 
 news_context = ""
 idx = 1
-seen_links = set() # 중복 기사 필터링용
+seen_links = set()
 
 for q in queries:
-    # 6개월 조건(when:6m) 추가 및 안전한 URL 인코딩 적용
-    query_with_time = f"{q} when:6m"
-    encoded_query = urllib.parse.quote(query_with_time)
-    rss_url = f"https://news.google.com/rss/search?q={encoded_query}&hl=ko&gl=KR&ceid=KR:ko"
+    # 파이썬 requests 라이브러리를 통해 안전하게 파라미터 전달 (6개월 조건 유지)
+    params = {
+        'q': f"{q} when:6m",
+        'hl': 'ko',
+        'gl': 'KR',
+        'ceid': 'KR:ko'
+    }
     
     try:
-        response = requests.get(rss_url, timeout=10)
+        response = requests.get("https://news.google.com/rss/search", params=params, timeout=10)
         root = ET.fromstring(response.text)
         
-        # 각 쿼리당 상위 15개씩 탐색
-        for item in root.findall('.//item')[:15]:
+        # 각 키워드당 상위 10개씩 골라 담기
+        for item in root.findall('.//item')[:10]:
             title = item.find('title').text
             link = item.find('link').text
             pub_date = item.find('pubDate').text
             
-            # 이미 수집한 기사 링크면 건너뜀 (토큰 절약 및 AI 혼동 방지)
+            # 중복 기사 제거
             if link not in seen_links:
                 seen_links.add(link)
                 news_context += f"[{idx}] 제목: {title}\n날짜: {pub_date}\n링크: {link}\n\n"
                 idx += 1
-    except:
+    except Exception as e:
+        print(f"[{q}] 검색 실패: {e}")
         continue
 
 if not news_context.strip():
     deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 뉴스 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</h3></div>"
 else:
-    # 3. AI 프롬프트 (6개월 및 다양한 투자 단계 반영)
+    # 3. AI 프롬프트
     prompt = f"""
     당신은 글로벌 IB의 M&A 애널리스트입니다. 
     제공된 뉴스 리스트에서 '최근 6개월 이내'의 국내 반도체, 바이오, 배터리 관련 투자 및 M&A 소식만 골라 요약하세요.
@@ -104,7 +95,7 @@ else:
     result = model.generate_content(prompt)
     deal_content = result.text.replace('```html', '').replace('```', '').strip()
 
-# 4. HTML 생성 (기존 모바일 반응형 디자인 유지)
+# 4. HTML 생성
 kst = pytz.timezone('Asia/Seoul')
 today_str = datetime.now(kst).strftime("%Y년 %m월 %d일")
 
@@ -128,44 +119,3 @@ html_template = f"""
         .category-badge {{ background: #ebf8fa; color: #319795; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: bold; margin-right: 15px; border: 1px solid #b2f5ea; }}
         .deal-card h3 {{ margin: 0; font-size: 1.25em; color: #2d3748; }}
         .source-link {{ color: #dd6b20; text-decoration: none; font-weight: bold; margin-right: 8px; background: #feebc8; padding: 3px 8px; border-radius: 4px; display: inline-block; margin-bottom: 4px; }}
-        
-        @media (max-width: 600px) {{
-            body {{ padding: 15px; }}
-            h1 {{ font-size: 1.5em; }}
-            .filter-btn {{ padding: 12px 16px; font-size: 1.1em; flex-grow: 1; text-align: center; }}
-            .deal-card {{ padding: 15px; }}
-            .category-badge {{ padding: 3px 8px; font-size: 0.8em; margin-right: 10px; }}
-            .deal-card h3 {{ font-size: 1.15em; line-height: 1.3; }}
-        }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1 style="text-align:center;">📊 Domestic M&A Daily Dashboard</h1>
-        <p style="text-align:center; font-weight:bold; color:#718096; margin-bottom: 25px;">업데이트: {today_str}</p>
-        
-        <div class="filter-container">
-            <button class="filter-btn active" onclick="filterDeals('전체')">전체보기</button>
-            <button class="filter-btn" onclick="filterDeals('반도체')">반도체</button>
-            <button class="filter-btn" onclick="filterDeals('바이오')">바이오</button>
-            <button class="filter-btn" onclick="filterDeals('배터리')">배터리</button>
-            <button class="filter-btn" onclick="filterDeals('기타')">기타</button>
-        </div>
-        
-        <div id="deal-list">{deal_content}</div>
-    </div>
-    <script>
-        function filterDeals(cat) {{
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            event.target.classList.add('active');
-            document.querySelectorAll('.deal-card').forEach(c => {{
-                c.style.display = (cat === '전체' || c.getAttribute('data-category') === cat) ? 'block' : 'none';
-            }});
-        }}
-    </script>
-</body>
-</html>
-"""
-
-with open("index.html", "w", encoding="utf-8") as f:
-    f.write(html_template)
