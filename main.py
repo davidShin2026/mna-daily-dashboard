@@ -1,11 +1,9 @@
 import os
 import requests
-import urllib.parse
 import xml.etree.ElementTree as ET
 import google.generativeai as genai
 from datetime import datetime
 import pytz
-import time
 
 # 1. API 키 설정
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
@@ -18,72 +16,67 @@ except Exception as e:
     print(f"모델 설정 에러: {e}")
     raise e
 
-# 2. 검색 쿼리 (국내 딜은 네이버가 압도적으로 정확합니다)
-queries = [
-    "반도체 M&A", "반도체 인수합병", "반도체 지분투자", "반도체 상장",
-    "바이오 M&A", "바이오 인수합병", "바이오 지분투자", "바이오 상장",
-    "배터리 M&A", "이차전지 인수합병", "이차전지 지분투자", "이차전지 상장"
+# 2. 언론사 공식 RSS (검색 포털이 아니므로 IP 차단 없음)
+rss_feeds = [
+    "https://rss.hankyung.com/feed/it.xml",      # 한국경제 IT
+    "https://rss.hankyung.com/feed/industry.xml",# 한국경제 산업
+    "https://www.mk.co.kr/rss/50300009/",        # 매일경제 IT
+    "https://www.mk.co.kr/rss/50200011/",        # 매일경제 증권
+    "https://www.mk.co.kr/rss/30100041/"         # 매일경제 기업
 ]
+
+# 자본 거래(Deal) 관련 핵심 키워드
+deal_keywords = ["인수", "합병", "M&A", "매각", "지분", "투자", "상장", "IPO", "시리즈", "펀드"]
 
 news_context = ""
 idx = 1
-seen_links = set()
+seen_titles = set()
 
-# 기본 헤더 설정
 headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36'
 }
 
-for q in queries:
-    # 네이버 뉴스 검색 RSS URL 조립
-    encoded_query = urllib.parse.quote(q)
-    naver_url = f"https://newssearch.naver.com/search.naver?where=rss&query={encoded_query}"
-    
+for url in rss_feeds:
     try:
-        response = requests.get(naver_url, headers=headers, timeout=10)
-        
+        response = requests.get(url, headers=headers, timeout=10)
         if response.status_code != 200:
-            print(f"[네이버 차단됨] {q} - HTTP {response.status_code}")
             continue
             
         root = ET.fromstring(response.text)
         
-        # 네이버 RSS는 최신순으로 제공되므로 상위 6개씩 추출
-        for item in root.findall('.//item')[:6]:
+        for item in root.findall('.//item'):
             title = item.find('title').text
             link = item.find('link').text
-            pub_date = item.find('pubDate').text
+            pub_date_elem = item.find('pubDate')
+            pub_date = pub_date_elem.text if pub_date_elem is not None else "오늘"
             
-            if link not in seen_links:
-                seen_links.add(link)
-                news_context += f"[{idx}] 제목: {title}\n날짜: {pub_date}\n링크: {link}\n\n"
-                idx += 1
-                
-        # 안정성을 위해 1초 대기
-        time.sleep(1)
-        
+            # 파이썬 1차 필터링: 제목에 딜(Deal) 키워드가 없으면 가차 없이 버림
+            if title and any(k in title for k in deal_keywords):
+                if title not in seen_titles:
+                    seen_titles.add(title)
+                    news_context += f"[{idx}] 제목: {title}\n날짜: {pub_date}\n링크: {link}\n\n"
+                    idx += 1
+                    
     except Exception as e:
-        print(f"[{q}] 파싱 에러: {e}")
+        print(f"[{url}] 파싱 에러: {e}")
         continue
 
-# 3. 데이터 로딩 실패 시 예외 처리
 if not news_context.strip():
-    deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 뉴스 데이터를 불러오지 못했습니다. 네이버 RSS 서버 접근 오류입니다.</h3></div>"
+    deal_content = "<div class='deal-card'><h3 style='color:#718096;'>🎯 오늘 업데이트된 투자 및 M&A 관련 뉴스가 없습니다. (내일 다시 확인해 보세요)</h3></div>"
 else:
-    # 4. AI 프롬프트 (요약 및 분류 지시)
+    # 3. AI 2차 분석 및 분류 프롬프트
     prompt = f"""
     당신은 글로벌 IB의 M&A 애널리스트입니다. 
-    제공된 뉴스 리스트에서 국내 반도체, 바이오, 배터리 관련 투자 및 M&A 소식만 골라 요약하세요.
+    제공된 경제 기사 리스트에서 국내 기업의 투자, M&A, 상장 소식을 골라 요약하세요.
 
     [뉴스 데이터]
     {news_context}
 
     [작성 규칙]
     1. 반드시 '반도체', '바이오', '배터리', '기타' 카테고리로 분류하세요. (이차전지는 '배터리'로 통일)
-    2. M&A, 지분 인수/매각, 경영권 변동, IPO, Pre-IPO, 시리즈 투자 등 자본 거래를 빠짐없이 포함하세요.
-    3. 동일 건에 대한 기사는 하나로 합치고 기사 원문 링크를 최대 3개까지 나열하세요.
-    4. 사족이나 인사말 없이 오직 HTML <div> 카드들만 출력하세요.
-    5. 기사의 '날짜' 데이터를 확인하여, 딜 발생 일자를 헤드라인(<h3>) 앞에 [YYYY.MM.DD] 형식으로 반드시 포함하세요. 
+    2. 동일 건에 대한 기사는 하나로 합치고 기사 원문 링크를 나열하세요.
+    3. 사족이나 인사말 없이 오직 HTML <div> 카드들만 출력하세요.
+    4. 기사의 '날짜' 데이터를 확인하여, 딜 발생 일자를 헤드라인(<h3>) 앞에 [YYYY.MM.DD] 형식으로 포함하세요.
     
     [출력 형식]
     <div class="deal-card" data-category="카테고리명">
@@ -93,8 +86,8 @@ else:
       </div>
       <ul>
         <li><strong>주체:</strong> [인수/투자자]</li>
-        <li><strong>상태:</strong> [진행상태 (예: 시리즈A 투자 유치, 경영권 매각 완료 등)]</li>
-        <li><strong>링크:</strong> <a href="URL1" target="_blank" class="source-link">기사1</a> <a href="URL2" target="_blank" class="source-link">기사2</a></li>
+        <li><strong>상태:</strong> [진행상태]</li>
+        <li><strong>링크:</strong> <a href="URL1" target="_blank" class="source-link">기사1</a></li>
       </ul>
       <h4>핵심 요약</h4>
       <ul><li>내용1</li><li>내용2</li></ul>
@@ -105,7 +98,7 @@ else:
     result = model.generate_content(prompt)
     deal_content = result.text.replace('```html', '').replace('```', '').strip()
 
-# 5. HTML 생성
+# 4. HTML 생성
 kst = pytz.timezone('Asia/Seoul')
 today_str = datetime.now(kst).strftime("%Y년 %m월 %d일")
 
