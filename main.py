@@ -59,7 +59,7 @@ for q in google_queries:
         continue
 
 # ==========================================
-# 트랙 2: 10대 언론사 직통 RSS (구글 차단 대비 및 최신 딜 확보)
+# 트랙 2: 언론사 직통 RSS (구글 차단 대비 및 최신 딜 확보)
 # ==========================================
 media_rss = [
     "https://rss.hankyung.com/feed/economy.xml", "https://rss.hankyung.com/feed/it.xml",
@@ -88,7 +88,7 @@ for url in media_rss:
         continue
 
 # ==========================================
-# 3. AI 분석 및 HTML 생성
+# 3. AI 분석 및 에러 방어막(Try-Except) 구축
 # ==========================================
 if not news_context.strip():
     deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 뉴스 데이터를 불러오지 못했습니다. 서버 상태를 확인해 주세요.</h3></div>"
@@ -121,10 +121,33 @@ else:
       <ul><li>내용1</li><li>내용2</li></ul>
     </div>
     """
-    model = genai.GenerativeModel(chosen_model_name.replace('models/', ''))
-    result = model.generate_content(prompt)
-    deal_content = result.text.replace('```html', '').replace('```', '').strip()
+    
+    try:
+        model = genai.GenerativeModel(chosen_model_name.replace('models/', ''))
+        
+        # M&A 관련 거친 용어가 AI 안전 필터에 걸려 빈 화면이 나오는 것을 원천 차단
+        safety_settings = [
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
+        ]
+        
+        result = model.generate_content(prompt, safety_settings=safety_settings)
+        
+        # AI가 빈 응답을 줬을 때 빌드가 터지지 않도록 예외 처리
+        if result.parts:
+            deal_content = result.text.replace('```html', '').replace('```', '').strip()
+        else:
+            deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 기사를 수집했으나 AI가 요약을 생성하지 못했습니다. (빈 응답)</h3></div>"
+            
+    except Exception as e:
+        print(f"AI 생성 에러: {e}")
+        deal_content = f"<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 AI 요약 중 에러가 발생했습니다: {e}</h3></div>"
 
+# ==========================================
+# 4. HTML 생성
+# ==========================================
 kst = pytz.timezone('Asia/Seoul')
 today_str = datetime.now(kst).strftime("%Y년 %m월 %d일")
 
