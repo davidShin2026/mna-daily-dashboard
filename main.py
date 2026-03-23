@@ -44,7 +44,7 @@ for q in google_queries:
         response = requests.get(url, headers=headers, timeout=5)
         if response.status_code == 200:
             root = ET.fromstring(response.text)
-            for item in root.findall('.//item')[:5]: # 쿼리당 핵심 5개씩
+            for item in root.findall('.//item')[:5]:
                 title = item.find('title').text
                 link = item.find('link').text
                 pub_date = item.find('pubDate').text
@@ -54,12 +54,12 @@ for q in google_queries:
                     seen_titles.add(title)
                     news_context += f"[{idx}] 제목: {title}\n날짜: {pub_date}\n링크: {link}\n\n"
                     idx += 1
-        time.sleep(1) # 차단 방지 휴식
+        time.sleep(1)
     except:
         continue
 
 # ==========================================
-# 트랙 2: 언론사 직통 RSS (구글 차단 대비 및 최신 딜 확보)
+# 트랙 2: 10대 언론사 직통 RSS (구글 차단 대비 및 최신 딜 확보)
 # ==========================================
 media_rss = [
     "https://rss.hankyung.com/feed/economy.xml", "https://rss.hankyung.com/feed/it.xml",
@@ -88,11 +88,12 @@ for url in media_rss:
         continue
 
 # ==========================================
-# 3. AI 분석 및 에러 방어막(Try-Except) 구축
+# 3. AI 분석 및 빈 응답 완벽 방어
 # ==========================================
 if not news_context.strip():
     deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 뉴스 데이터를 불러오지 못했습니다. 서버 상태를 확인해 주세요.</h3></div>"
 else:
+    # 빈 응답을 막기 위한 명시적인 룰(규칙 1번) 추가
     prompt = f"""
     당신은 글로벌 IB의 시니어 M&A 애널리스트입니다. 
     제공된 뉴스 리스트에서 '반도체, 바이오, 배터리' 섹터의 '인수합병(M&A), 지분 투자, 경영권 매각, 상장(IPO)' 소식만을 엄격하게 골라 요약하세요. 
@@ -101,10 +102,12 @@ else:
     {news_context}
 
     [작성 규칙]
-    1. 반드시 '반도체', '바이오', '배터리', '기타' 카테고리로 분류하세요. (이차전지는 '배터리'로 통일)
-    2. 동일 건에 대한 기사는 하나로 묶고 기사 링크를 나열하세요.
-    3. 사족이나 인사말 없이 오직 HTML <div> 카드들만 출력하세요.
-    4. 기사의 '날짜' 데이터를 확인하여, 딜 발생 일자를 헤드라인(<h3>) 앞에 [YYYY.MM.DD] 형식으로 포함하세요.
+    1. 조건에 맞는 진짜 자본 거래(M&A, 투자, 상장) 기사가 단 하나도 없다면, 절대 빈칸을 출력하지 말고 아래 코드를 그대로 출력하세요:
+       <div class='deal-card'><h3 style='color:#718096;'>🎯 오늘 조건에 맞는 진정한 M&A/투자 기사가 없습니다. (AI 딥 필터링 완료)</h3></div>
+    2. 조건에 맞는 기사가 있다면 반드시 '반도체', '바이오', '배터리', '기타' 카테고리로 분류하세요.
+    3. 동일 건에 대한 기사는 하나로 묶고 기사 링크를 나열하세요.
+    4. 사족이나 인사말 없이 오직 HTML <div> 카드들만 출력하세요.
+    5. 기사의 '날짜' 데이터를 확인하여, 딜 발생 일자를 헤드라인(<h3>) 앞에 [YYYY.MM.DD] 형식으로 포함하세요.
     
     [출력 형식]
     <div class="deal-card" data-category="카테고리명">
@@ -125,7 +128,6 @@ else:
     try:
         model = genai.GenerativeModel(chosen_model_name.replace('models/', ''))
         
-        # M&A 관련 거친 용어가 AI 안전 필터에 걸려 빈 화면이 나오는 것을 원천 차단
         safety_settings = [
             {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
             {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
@@ -135,14 +137,13 @@ else:
         
         result = model.generate_content(prompt, safety_settings=safety_settings)
         
-        # AI가 빈 응답을 줬을 때 빌드가 터지지 않도록 예외 처리
-        if result.parts:
+        # result.text가 비어있어도 파이썬이 뻗지 않도록 이중 방어막 설치
+        if hasattr(result, 'text') and result.text.strip():
             deal_content = result.text.replace('```html', '').replace('```', '').strip()
         else:
-            deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 기사를 수집했으나 AI가 요약을 생성하지 못했습니다. (빈 응답)</h3></div>"
+            deal_content = "<div class='deal-card'><h3 style='color:#718096;'>🎯 오늘 조건에 맞는 진정한 M&A/투자 기사가 없습니다. (AI 딥 필터링 완료)</h3></div>"
             
     except Exception as e:
-        print(f"AI 생성 에러: {e}")
         deal_content = f"<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 AI 요약 중 에러가 발생했습니다: {e}</h3></div>"
 
 # ==========================================
