@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 import google.generativeai as genai
 from datetime import datetime
 import pytz
+import time
 
 # 1. API 키 설정
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
@@ -16,7 +17,7 @@ except Exception as e:
     print(f"모델 설정 에러: {e}")
     raise e
 
-# 2. 검색 쿼리 잘게 쪼개기 (구글 RSS 에러 방지)
+# 2. 검색 쿼리 잘게 쪼개기
 queries = [
     "반도체 인수합병", "반도체 지분투자", "반도체 경영권", "반도체 IPO 상장", "반도체 시리즈 투자",
     "바이오 인수합병", "바이오 지분투자", "바이오 경영권", "바이오 IPO 상장", "바이오 시리즈 투자",
@@ -28,8 +29,12 @@ news_context = ""
 idx = 1
 seen_links = set()
 
+# 구글 봇 차단 우회를 위한 User-Agent (일반 크롬 브라우저로 위장)
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+}
+
 for q in queries:
-    # 파이썬 requests 라이브러리를 통해 안전하게 파라미터 전달 (6개월 조건 유지)
     params = {
         'q': f"{q} when:6m",
         'hl': 'ko',
@@ -38,20 +43,23 @@ for q in queries:
     }
     
     try:
-        response = requests.get("https://news.google.com/rss/search", params=params, timeout=10)
+        response = requests.get("https://news.google.com/rss/search", params=params, headers=headers, timeout=10)
         root = ET.fromstring(response.text)
         
-        # 각 키워드당 상위 10개씩 골라 담기
-        for item in root.findall('.//item')[:10]:
+        # AI 프롬프트 과부하 방지를 위해 각 키워드당 상위 5개 기사만 추출
+        for item in root.findall('.//item')[:5]:
             title = item.find('title').text
             link = item.find('link').text
             pub_date = item.find('pubDate').text
             
-            # 중복 기사 제거
             if link not in seen_links:
                 seen_links.add(link)
                 news_context += f"[{idx}] 제목: {title}\n날짜: {pub_date}\n링크: {link}\n\n"
                 idx += 1
+                
+        # 연속 요청으로 인한 IP 차단을 막기 위해 1초 대기
+        time.sleep(1)
+        
     except Exception as e:
         print(f"[{q}] 검색 실패: {e}")
         continue
@@ -155,7 +163,3 @@ html_template = f"""
     </script>
 </body>
 </html>
-"""
-
-with open("index.html", "w", encoding="utf-8") as f:
-    f.write(html_template)
