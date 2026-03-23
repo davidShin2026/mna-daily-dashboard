@@ -44,7 +44,7 @@ for q in queries:
 if not news_context.strip():
     deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 뉴스 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</h3></div>"
 else:
-    # 3. AI 프롬프트
+    # 3. AI 프롬프트 (날짜 헤드라인 추가 지시)
     prompt = f"""
     당신은 글로벌 IB의 M&A 애널리스트입니다. 
     제공된 뉴스 리스트에서 '최근 3개월 이내'의 국내 M&A, 지분 투자, 매각 소식만 골라 요약하세요.
@@ -57,12 +57,13 @@ else:
     2. 동일 건에 대한 기사는 하나로 합치고 기사 원문 링크를 최대 3개까지 나열하세요.
     3. 사족이나 인사말 없이 오직 HTML <div> 카드들만 출력하세요.
     4. 진행 중인 사안(추진, 검토)도 포함하세요.
+    5. 기사의 '날짜' 데이터를 확인하여, 딜 발생 일자를 헤드라인(<h3>) 앞에 [YYYY.MM.DD] 형식으로 반드시 포함하세요. (여러 기사가 묶인 경우 가장 최근 날짜 사용)
     
     [출력 형식]
     <div class="deal-card" data-category="카테고리명">
       <div class="card-header">
         <span class="category-badge">카테고리명</span>
-        <h3>🎯 [대상 업체명] 관련 소식</h3>
+        <h3>🎯 [YYYY.MM.DD] [대상 업체명] 관련 소식</h3>
       </div>
       <ul>
         <li><strong>주체:</strong> [인수/투자자]</li>
@@ -78,7 +79,7 @@ else:
     result = model.generate_content(prompt)
     deal_content = result.text.replace('```html', '').replace('```', '').strip()
 
-# 4. HTML 생성 (모바일 반응형 CSS 추가 적용)
+# 4. HTML 생성 (모바일 반응형 CSS 포함)
 kst = pytz.timezone('Asia/Seoul')
 today_str = datetime.now(kst).strftime("%Y년 %m월 %d일")
 
@@ -93,7 +94,6 @@ html_template = f"""
         body {{ font-family: 'Malgun Gothic', sans-serif; background-color: #f4f7f6; padding: 20px; }}
         .container {{ max-width: 900px; margin: auto; }}
         
-        /* 필터 버튼 레이아웃 변경 (Flexbox 적용) */
         .filter-container {{ display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 30px; }}
         .filter-btn {{ background: #e2e8f0; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-weight: bold; font-size: 1em; transition: 0.2s; }}
         .filter-btn.active {{ background: #1a365d; color: white; }}
@@ -104,16 +104,10 @@ html_template = f"""
         .deal-card h3 {{ margin: 0; font-size: 1.25em; color: #2d3748; }}
         .source-link {{ color: #dd6b20; text-decoration: none; font-weight: bold; margin-right: 8px; background: #feebc8; padding: 3px 8px; border-radius: 4px; display: inline-block; margin-bottom: 4px; }}
         
-        /* 모바일 기기(화면 폭 600px 이하) 전용 스타일 지정 */
         @media (max-width: 600px) {{
             body {{ padding: 15px; }}
             h1 {{ font-size: 1.5em; }}
-            .filter-btn {{ 
-                padding: 12px 16px; /* 모바일에서 터치하기 쉽게 상하 패딩 확대 */
-                font-size: 1.1em;   /* 모바일에서 글씨 크기 확대 */
-                flex-grow: 1;       /* 화면 너비에 맞춰 버튼이 늘어나도록 설정 */
-                text-align: center;
-            }}
+            .filter-btn {{ padding: 12px 16px; font-size: 1.1em; flex-grow: 1; text-align: center; }}
             .deal-card {{ padding: 15px; }}
             .category-badge {{ padding: 3px 8px; font-size: 0.8em; margin-right: 10px; }}
             .deal-card h3 {{ font-size: 1.15em; line-height: 1.3; }}
