@@ -29,7 +29,7 @@ news_context = ""
 idx = 1
 seen_links = set()
 
-# 구글 봇 차단 우회를 위한 User-Agent (일반 크롬 브라우저로 위장)
+# 구글 봇 차단 우회를 위한 User-Agent
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 }
@@ -163,3 +163,7 @@ html_template = f"""
     </script>
 </body>
 </html>
+"""
+
+with open("index.html", "w", encoding="utf-8") as f:
+    f.write(html_template)
