@@ -8,21 +8,17 @@
     <style>
         body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f7f6; padding: 20px; }
         .container { max-width: 900px; margin: auto; }
-        
         .header-container { display: flex; align-items: center; justify-content: center; margin-bottom: 25px; border-bottom: 2px solid #1a365d; padding-bottom: 15px; }
         .isu-logo { max-height: 45px; margin-right: 18px; vertical-align: middle; }
         .isu-title { margin: 0; font-size: 2.3em; color: #1a365d; }
-        
         .filter-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 30px; }
         .filter-btn { background: #e2e8f0; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-weight: bold; font-size: 1em; transition: 0.2s; }
         .filter-btn.active { background: #1a365d; color: white; }
-        
         .deal-card { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; border-left: 5px solid #2b6cb0; line-height: 1.6; }
         .card-header { display: flex; align-items: center; border-bottom: 2px solid #edf2f7; padding-bottom: 12px; margin-bottom: 15px; }
         .category-badge { background: #ebf8fa; color: #319795; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: bold; margin-right: 15px; border: 1px solid #b2f5ea; }
         .deal-card h3 { margin: 0; font-size: 1.25em; color: #2d3748; }
         .source-link { color: #dd6b20; text-decoration: none; font-weight: bold; margin-right: 8px; background: #feebc8; padding: 3px 8px; border-radius: 4px; display: inline-block; margin-bottom: 4px; }
-        
         @media (max-width: 600px) {
             body { padding: 15px; }
             h1 { font-size: 1.5em; }
@@ -52,7 +48,7 @@
             <button class="filter-btn" onclick="filterDeals('기타')">기타</button>
         </div>
         
-        <div id="deal-list"><div class='deal-card'><h3 style='color:#e53e3e;'>🎯 뉴스 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</h3></div></div>
+        <div id="deal-list"><div class='deal-card'><h3 style='color:#e53e3e;'>🎯 기사를 수집했으나 AI가 요약을 생성하지 못했습니다. (빈 응답)</h3></div></div>
     </div>
     <script>
         function filterDeals(cat) {
