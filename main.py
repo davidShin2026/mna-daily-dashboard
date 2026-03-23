@@ -16,8 +16,7 @@ except Exception as e:
     print(f"모델 설정 에러: {e}")
     raise e
 
-# 2. 가장 확실한 검색 쿼리 리스트 (단순화)
-# 구글 RSS가 잘 인식하도록 복잡한 문법을 제거했습니다.
+# 2. 검색 쿼리 리스트
 queries = [
     "반도체 인수합병 매각 지분투자",
     "바이오 헬스케어 인수합병 투자",
@@ -28,13 +27,11 @@ news_context = ""
 idx = 1
 
 for q in queries:
-    # 안전하게 URL 인코딩 적용
     rss_url = f"https://news.google.com/rss/search?q={q}&hl=ko&gl=KR&ceid=KR:ko"
     try:
         response = requests.get(rss_url, timeout=10)
         root = ET.fromstring(response.text)
         
-        # 각 쿼리당 상위 15개씩 수집
         for item in root.findall('.//item')[:15]:
             title = item.find('title').text
             link = item.find('link').text
@@ -47,7 +44,7 @@ for q in queries:
 if not news_context.strip():
     deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 뉴스 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</h3></div>"
 else:
-    # 3. AI에게 날짜 판단까지 맡기기 (프롬프트 강화)
+    # 3. AI 프롬프트
     prompt = f"""
     당신은 글로벌 IB의 M&A 애널리스트입니다. 
     제공된 뉴스 리스트에서 '최근 3개월 이내'의 국내 M&A, 지분 투자, 매각 소식만 골라 요약하세요.
@@ -81,7 +78,7 @@ else:
     result = model.generate_content(prompt)
     deal_content = result.text.replace('```html', '').replace('```', '').strip()
 
-# 4. HTML 생성
+# 4. HTML 생성 (모바일 반응형 CSS 추가 적용)
 kst = pytz.timezone('Asia/Seoul')
 today_str = datetime.now(kst).strftime("%Y년 %m월 %d일")
 
@@ -90,22 +87,44 @@ html_template = f"""
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Domestic M&A Dashboard</title>
     <style>
         body {{ font-family: 'Malgun Gothic', sans-serif; background-color: #f4f7f6; padding: 20px; }}
         .container {{ max-width: 900px; margin: auto; }}
-        .filter-container {{ text-align: center; margin-bottom: 30px; }}
-        .filter-btn {{ background: #e2e8f0; border: none; padding: 10px 20px; margin: 5px; border-radius: 20px; cursor: pointer; font-weight: bold; }}
+        
+        /* 필터 버튼 레이아웃 변경 (Flexbox 적용) */
+        .filter-container {{ display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 30px; }}
+        .filter-btn {{ background: #e2e8f0; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-weight: bold; font-size: 1em; transition: 0.2s; }}
         .filter-btn.active {{ background: #1a365d; color: white; }}
-        .deal-card {{ background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; border-left: 5px solid #2b6cb0; }}
-        .category-badge {{ background: #ebf8fa; color: #319795; padding: 3px 10px; border-radius: 10px; font-size: 0.8em; font-weight: bold; }}
-        .source-link {{ color: #dd6b20; text-decoration: none; font-weight: bold; margin-right: 10px; background: #feebc8; padding: 2px 5px; border-radius: 4px; }}
+        
+        .deal-card {{ background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; border-left: 5px solid #2b6cb0; line-height: 1.6; }}
+        .card-header {{ display: flex; align-items: center; border-bottom: 2px solid #edf2f7; padding-bottom: 12px; margin-bottom: 15px; }}
+        .category-badge {{ background: #ebf8fa; color: #319795; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: bold; margin-right: 15px; border: 1px solid #b2f5ea; }}
+        .deal-card h3 {{ margin: 0; font-size: 1.25em; color: #2d3748; }}
+        .source-link {{ color: #dd6b20; text-decoration: none; font-weight: bold; margin-right: 8px; background: #feebc8; padding: 3px 8px; border-radius: 4px; display: inline-block; margin-bottom: 4px; }}
+        
+        /* 모바일 기기(화면 폭 600px 이하) 전용 스타일 지정 */
+        @media (max-width: 600px) {{
+            body {{ padding: 15px; }}
+            h1 {{ font-size: 1.5em; }}
+            .filter-btn {{ 
+                padding: 12px 16px; /* 모바일에서 터치하기 쉽게 상하 패딩 확대 */
+                font-size: 1.1em;   /* 모바일에서 글씨 크기 확대 */
+                flex-grow: 1;       /* 화면 너비에 맞춰 버튼이 늘어나도록 설정 */
+                text-align: center;
+            }}
+            .deal-card {{ padding: 15px; }}
+            .category-badge {{ padding: 3px 8px; font-size: 0.8em; margin-right: 10px; }}
+            .deal-card h3 {{ font-size: 1.15em; line-height: 1.3; }}
+        }}
     </style>
 </head>
 <body>
     <div class="container">
         <h1 style="text-align:center;">📊 Domestic M&A Daily Dashboard</h1>
-        <p style="text-align:center; font-weight:bold;">업데이트: {today_str}</p>
+        <p style="text-align:center; font-weight:bold; color:#718096; margin-bottom: 25px;">업데이트: {today_str}</p>
+        
         <div class="filter-container">
             <button class="filter-btn active" onclick="filterDeals('전체')">전체보기</button>
             <button class="filter-btn" onclick="filterDeals('반도체')">반도체</button>
@@ -113,6 +132,7 @@ html_template = f"""
             <button class="filter-btn" onclick="filterDeals('배터리')">배터리</button>
             <button class="filter-btn" onclick="filterDeals('기타')">기타</button>
         </div>
+        
         <div id="deal-list">{deal_content}</div>
     </div>
     <script>
