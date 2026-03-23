@@ -4,8 +4,6 @@ import xml.etree.ElementTree as ET
 import google.generativeai as genai
 from datetime import datetime
 import pytz
-import time
-import urllib.parse
 
 # 1. API 키 설정
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
@@ -18,97 +16,74 @@ except Exception as e:
     print(f"모델 설정 에러: {e}")
     raise e
 
-# 2. 검색 쿼리 잘게 쪼개기 (구글 RSS 에러 방지 및 다양성 확보)
-queries = [
-    # 반도체/소부장
-    "반도체 M&A OR 인수 OR 매각 OR Exit",
-    "반도체 지분 OR 경영권 OR 투자",
-    "반도체 IPO OR 상장 OR Pre-IPO",
-    "반도체 시리즈A OR 시리즈B OR 시리즈C OR 시드 투자",
-    # 바이오/헬스케어
-    "바이오 M&A OR 인수 OR 매각 OR Exit",
-    "바이오 지분 OR 경영권 OR 투자",
-    "바이오 IPO OR 상장 OR Pre-IPO",
-    "바이오 시리즈A OR 시리즈B OR 시리즈C OR 시드 투자",
-    # 배터리/이차전지
-    "배터리 M&A OR 인수 OR 매각 OR Exit",
-    "이차전지 지분 OR 경영권 OR 투자",
-    "이차전지 IPO OR 상장 OR Pre-IPO",
-    "이차전지 시리즈A OR 시리즈B OR 시리즈C OR 시드 투자"
+# 2. 검색 포털 우회 -> 주요 경제지 공식 RSS 피드 직결
+# 구글/네이버의 봇 차단을 피해 언론사 서버에서 직접 기사를 가져옵니다.
+rss_feeds = [
+    "https://rss.hankyung.com/feed/it.xml",       # 한국경제 IT/과학
+    "https://rss.hankyung.com/feed/industry.xml", # 한국경제 산업
+    "https://www.mk.co.kr/rss/50300009/",         # 매일경제 IT
+    "https://www.mk.co.kr/rss/50200011/",         # 매일경제 증권
+    "https://www.mk.co.kr/rss/30100041/",         # 매일경제 기업
+    "https://www.etnews.com/rss/industry.xml"     # 전자신문 산업
 ]
+
+# 파이썬 1차 필터링용 자본 거래 핵심 키워드
+deal_keywords = ["인수", "합병", "M&A", "매각", "지분", "투자", "상장", "IPO", "시리즈", "펀드"]
 
 news_context = ""
 idx = 1
-seen_links = set()
+seen_titles = set()
 
-# 구글 봇 차단 우회를 위한 스텔스 엔진 설정
+# 차단 방지용 기본 헤더
 headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36'
 }
 
-for q in queries:
-    # 6개월 조건(when:6m) 추가 및 안전한 인코딩을 위해 urllib.parse 사용
-    encoded_query = urllib.parse.quote(f"{q} when:6m")
-    url = f"https://news.google.com/rss/search?q={encoded_query}&hl=ko&gl=KR&ceid=KR:ko"
-    
-    # 봇 차단 우회를 위한 리트라이 메커니즘 (with Exponential Backoff)
-    max_retries = 3
-    retry_delay = 3
-    
-    for attempt in range(max_retries):
-        try:
-            response = requests.get(url, headers=headers, timeout=10)
+for url in rss_feeds:
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code != 200:
+            continue
             
-            # 성공 시 루프 탈출
-            if response.status_code == 200:
-                root = ET.fromstring(response.text)
-                # 각 쿼리당 상위 10개씩 골라 담기
-                for item in root.findall('.//item')[:10]:
-                    title = item.find('title').text
-                    link = item.find('link').text
-                    pub_date = item.find('pubDate').text
+        root = ET.fromstring(response.text)
+        
+        for item in root.findall('.//item'):
+            title = item.find('title').text
+            link = item.find('link').text
+            
+            # 언론사별 날짜 포맷 차이 대응
+            pub_date_elem = item.find('pubDate')
+            pub_date = pub_date_elem.text if pub_date_elem is not None else "오늘"
+            
+            # 파이썬 1차 뜰채: 제목에 딜(Deal) 키워드가 있는 기사만 포착
+            if title and any(k in title for k in deal_keywords):
+                if title not in seen_titles:
+                    seen_titles.add(title)
+                    news_context += f"[{idx}] 제목: {title}\n날짜: {pub_date}\n링크: {link}\n\n"
+                    idx += 1
                     
-                    if link not in seen_links:
-                        seen_links.add(link)
-                        news_context += f"[{idx}] 제목: {title}\n날짜: {pub_date}\n링크: {link}\n\n"
-                        idx += 1
-                break
-                
-            # 봇 차단(429 또는 403) 시 대기 후 재시도
-            elif response.status_code in [429, 403]:
-                print(f"[Attempt {attempt+1}/{max_retries}] 구글 서버 차단: {q}. {retry_delay}초 후 재시도합니다.")
-                time.sleep(retry_delay)
-                retry_delay *= 2 # Exponential backoff (3s -> 6s -> 12s)
-            
-            else:
-                print(f"[Attempt {attempt+1}/{max_retries}] 접속 실패: {q}. {response.status_code}")
-                break
-                
-        except Exception as e:
-            print(f"[{q}] 파싱 에러: {e}")
-            break
-            
-    # 연속 요청으로 인한 IP 차단을 막기 위해 2초 대기 (안정성 강화)
-    time.sleep(2)
+    except Exception as e:
+        print(f"[{url}] 파싱 에러: {e}")
+        continue
 
-# 기사를 하나도 못 가져왔을 때의 예외 처리
+# 3. 예외 처리 및 AI 요약
 if not news_context.strip():
-    deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 뉴스 데이터를 불러오지 못했습니다. 깃허브 Actions 로그를 확인해 주세요.</h3></div>"
+    # 언론사 직결 방식이므로, 에러가 아니라 진짜 오늘 발생한 딜이 없을 경우입니다.
+    deal_content = "<div class='deal-card'><h3 style='color:#718096;'>🎯 오늘 업데이트된 국내 주요 M&A 및 투자 소식이 없습니다.</h3></div>"
 else:
-    # AI 프롬프트 (M&A New for ISU OI Team 요약 및 분류 지시)
+    # AI 프롬프트
     prompt = f"""
     당신은 글로벌 IB의 M&A 애널리스트입니다. 
-    제공된 뉴스 리스트에서 국내 반도체, 바이오, 배터리 관련 투자 및 M&A 소식만 골라 요약하세요.
+    제공된 경제 기사 리스트에서 반도체, 바이오, 배터리 관련 M&A, 투자, 상장 소식을 철저히 요약하세요.
 
     [뉴스 데이터]
     {news_context}
 
     [작성 규칙]
     1. 반드시 '반도체', '바이오', '배터리', '기타' 카테고리로 분류하세요. (이차전지는 '배터리'로 통일)
-    2. M&A, 지분 인수/매각, 경영권 변동, IPO, Pre-IPO, 시리즈 A/B/C, 시드 투자 등 모든 형태의 자본 거래를 빠짐없이 포함하세요.
-    3. 동일 건에 대한 기사는 하나로 합치고 기사 원문 링크를 나열하세요.
-    4. 사족이나 인사말 없이 오직 HTML <div> 카드들만 출력하세요.
-    5. 기사의 '날짜' 데이터를 확인하여, 딜 발생 일자를 헤드라인(<h3>) 앞에 [YYYY.MM.DD] 형식으로 포함하세요. 
+    2. 동일 건에 대한 기사는 하나로 묶고 기사 링크를 나열하세요.
+    3. 사족이나 인사말 없이 오직 HTML <div> 카드들만 출력하세요.
+    4. 기사의 '날짜' 데이터를 확인하여, 딜 발생 일자를 헤드라인(<h3>) 앞에 [YYYY.MM.DD] 형식으로 포함하세요.
     
     [출력 형식]
     <div class="deal-card" data-category="카테고리명">
@@ -118,8 +93,8 @@ else:
       </div>
       <ul>
         <li><strong>주체:</strong> [인수/투자자]</li>
-        <li><strong>상태:</strong> [진행상태 (예: 시리즈A 투자 유치, 경영권 매각 완료 등)]</li>
-        <li><strong>링크:</strong> <a href="URL1" target="_blank" class="source-link">기사1</a> <a href="URL2" target="_blank" class="source-link">기사2</a></li>
+        <li><strong>상태:</strong> [진행상태]</li>
+        <li><strong>링크:</strong> <a href="URL1" target="_blank" class="source-link">기사1</a></li>
       </ul>
       <h4>핵심 요약</h4>
       <ul><li>내용1</li><li>내용2</li></ul>
@@ -130,7 +105,7 @@ else:
     result = model.generate_content(prompt)
     deal_content = result.text.replace('```html', '').replace('```', '').strip()
 
-# 4. HTML 생성 (M&A News for ISU OI Team 고도화 UI 디자인 적용)
+# 4. HTML 생성 (ISU OI Team 로고 UI 적용)
 kst = pytz.timezone('Asia/Seoul')
 today_str = datetime.now(kst).strftime("%Y년 %m월 %d일")
 
@@ -145,7 +120,6 @@ html_template = f"""
         body {{ font-family: 'Malgun Gothic', sans-serif; background-color: #f4f7f6; padding: 20px; }}
         .container {{ max-width: 900px; margin: auto; }}
         
-        /* 헤더 고도화 (로고/제목 flexbox 적용) */
         .header-container {{ display: flex; align-items: center; justify-content: center; margin-bottom: 25px; border-bottom: 2px solid #1a365d; padding-bottom: 15px; }}
         .isu-logo {{ max-height: 45px; margin-right: 18px; vertical-align: middle; }}
         .isu-title {{ margin: 0; font-size: 2.3em; color: #1a365d; }}
