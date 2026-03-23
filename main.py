@@ -18,76 +18,69 @@ except Exception as e:
     print(f"모델 설정 에러: {e}")
     raise e
 
-# 2. 검색 쿼리 설정
+# 2. 검색 쿼리 (국내 딜은 네이버가 압도적으로 정확합니다)
 queries = [
-    "반도체 M&A", "반도체 인수합병", "반도체 경영권", "반도체 지분투자", "반도체 상장", "반도체 시리즈 투자",
-    "바이오 M&A", "바이오 인수합병", "바이오 경영권", "바이오 지분투자", "바이오 상장", "바이오 시리즈 투자",
-    "배터리 M&A", "배터리 인수합병", "배터리 경영권", "이차전지 지분투자", "이차전지 상장", "이차전지 시리즈 투자"
+    "반도체 M&A", "반도체 인수합병", "반도체 지분투자", "반도체 상장",
+    "바이오 M&A", "바이오 인수합병", "바이오 지분투자", "바이오 상장",
+    "배터리 M&A", "이차전지 인수합병", "이차전지 지분투자", "이차전지 상장"
 ]
 
 news_context = ""
 idx = 1
 seen_links = set()
 
-# 강력한 브라우저 위장 헤더
+# 기본 헤더 설정
 headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Accept': 'application/rss+xml, application/rdf+xml;q=0.8, application/xml;q=0.6, text/xml;q=0.4, text/html;q=0.2',
-    'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 }
 
 for q in queries:
-    # 구글과 빙(Bing) 양쪽 URL 모두 준비
-    google_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(q + ' when:6m')}&hl=ko&gl=KR&ceid=KR:ko"
-    bing_url = f"https://www.bing.com/news/search?q={urllib.parse.quote(q)}&format=RSS&cc=kr"
+    # 네이버 뉴스 검색 RSS URL 조립
+    encoded_query = urllib.parse.quote(q)
+    naver_url = f"https://newssearch.naver.com/search.naver?where=rss&query={encoded_query}"
     
     try:
-        # 플랜 A: 구글 뉴스 시도
-        response = requests.get(google_url, headers=headers, timeout=10)
+        response = requests.get(naver_url, headers=headers, timeout=10)
         
-        # 플랜 B: 구글이 차단하면 빙(Bing) 뉴스로 즉시 우회
         if response.status_code != 200:
-            print(f"[Google IP 차단됨] Bing 뉴스로 우회 탐색: {q}")
-            response = requests.get(bing_url, headers=headers, timeout=10)
-            if response.status_code != 200:
-                continue
-                
+            print(f"[네이버 차단됨] {q} - HTTP {response.status_code}")
+            continue
+            
         root = ET.fromstring(response.text)
         
-        # 각 키워드당 상위 5개씩 기사 추출
-        for item in root.findall('.//item')[:5]:
+        # 네이버 RSS는 최신순으로 제공되므로 상위 6개씩 추출
+        for item in root.findall('.//item')[:6]:
             title = item.find('title').text
             link = item.find('link').text
-            
-            # Bing 뉴스는 pubDate 포맷이 다를 수 있어 안전하게 처리
-            pub_date_elem = item.find('pubDate')
-            pub_date = pub_date_elem.text if pub_date_elem is not None else "최근 6개월 이내"
+            pub_date = item.find('pubDate').text
             
             if link not in seen_links:
                 seen_links.add(link)
                 news_context += f"[{idx}] 제목: {title}\n날짜: {pub_date}\n링크: {link}\n\n"
                 idx += 1
                 
-        time.sleep(1) # 서버 과부하 방지
+        # 안정성을 위해 1초 대기
+        time.sleep(1)
         
     except Exception as e:
         print(f"[{q}] 파싱 에러: {e}")
         continue
 
-# 3. 데이터가 없을 경우와 있을 경우 처리
+# 3. 데이터 로딩 실패 시 예외 처리
 if not news_context.strip():
-    deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 뉴스 데이터를 불러오지 못했습니다. 구글과 Bing 서버 모두 접근이 차단되었습니다.</h3></div>"
+    deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 뉴스 데이터를 불러오지 못했습니다. 네이버 RSS 서버 접근 오류입니다.</h3></div>"
 else:
+    # 4. AI 프롬프트 (요약 및 분류 지시)
     prompt = f"""
     당신은 글로벌 IB의 M&A 애널리스트입니다. 
-    제공된 뉴스 리스트에서 '최근 6개월 이내'의 국내 반도체, 바이오, 배터리 관련 투자 및 M&A 소식만 골라 요약하세요.
+    제공된 뉴스 리스트에서 국내 반도체, 바이오, 배터리 관련 투자 및 M&A 소식만 골라 요약하세요.
 
     [뉴스 데이터]
     {news_context}
 
     [작성 규칙]
     1. 반드시 '반도체', '바이오', '배터리', '기타' 카테고리로 분류하세요. (이차전지는 '배터리'로 통일)
-    2. M&A, 지분 인수/매각, 경영권 변동, IPO, Pre-IPO, 시리즈 A/B/C, 시드 투자 등 모든 형태의 자본 거래를 빠짐없이 포함하세요.
+    2. M&A, 지분 인수/매각, 경영권 변동, IPO, Pre-IPO, 시리즈 투자 등 자본 거래를 빠짐없이 포함하세요.
     3. 동일 건에 대한 기사는 하나로 합치고 기사 원문 링크를 최대 3개까지 나열하세요.
     4. 사족이나 인사말 없이 오직 HTML <div> 카드들만 출력하세요.
     5. 기사의 '날짜' 데이터를 확인하여, 딜 발생 일자를 헤드라인(<h3>) 앞에 [YYYY.MM.DD] 형식으로 반드시 포함하세요. 
@@ -112,7 +105,7 @@ else:
     result = model.generate_content(prompt)
     deal_content = result.text.replace('```html', '').replace('```', '').strip()
 
-# 4. HTML 생성
+# 5. HTML 생성
 kst = pytz.timezone('Asia/Seoul')
 today_str = datetime.now(kst).strftime("%Y년 %m월 %d일")
 
