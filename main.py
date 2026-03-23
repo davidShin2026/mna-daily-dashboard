@@ -1,14 +1,15 @@
 import os
 import requests
 import urllib.parse
-import xml.etree.ElementTree as ET
 import google.generativeai as genai
 from datetime import datetime
 import pytz
-import time
+import re
 
-# 1. API 키 설정
+# 1. API 키 셋업
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+naver_client_id = os.environ.get("NAVER_CLIENT_ID")
+naver_client_secret = os.environ.get("NAVER_CLIENT_SECRET")
 
 try:
     available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
@@ -18,97 +19,82 @@ except Exception as e:
     print(f"모델 설정 에러: {e}")
     raise e
 
+# 2. 네이버 API 딥 서치 쿼리 (핵심 섹터 + 딜 유형)
+queries = [
+    "반도체 M&A", "반도체 인수합병", "반도체 경영권 매각", "반도체 지분 인수", "반도체 상장",
+    "바이오 M&A", "바이오 인수합병", "바이오 경영권 매각", "바이오 지분 인수", "바이오 상장",
+    "배터리 M&A", "이차전지 인수합병", "이차전지 지분 투자", "이차전지 상장",
+    "스타트업 투자유치", "시리즈A 투자", "시리즈B 투자", "Pre-IPO"
+]
+
+# 가짜 딜 및 테마주 노이즈 필터링
+exclude_keywords = ["설비", "시설", "연구개발", "R&D", "공장", "증설", "채용", "사옥", "실적", "영업이익", "테마주", "특징주", "급등", "주가"]
+
 news_context = ""
 idx = 1
 seen_titles = set()
 
 headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36'
+    "X-Naver-Client-Id": naver_client_id,
+    "X-Naver-Client-Secret": naver_client_secret
 }
 
-# 가짜 딜(단순 투자, 실적) 제외 필터
-exclude_keywords = ["설비", "시설", "공장", "증설", "채용", "사옥", "실적", "영업이익"]
+def clean_html(raw_html):
+    cleanr = re.compile('<.*?>')
+    cleantext = re.sub(cleanr, '', raw_html)
+    return cleantext.replace('&quot;', '"').replace('&apos;', "'").replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
 
-# ==========================================
-# 트랙 1: 구글 뉴스 (단순 쿼리로 6개월 치 과거 데이터 확보 시도)
-# ==========================================
-google_queries = [
-    "반도체 M&A when:6m", "반도체 지분인수 when:6m",
-    "바이오 M&A when:6m", "바이오 투자유치 when:6m",
-    "배터리 M&A when:6m", "이차전지 합작회사 when:6m"
-]
-
-for q in google_queries:
-    url = f"https://news.google.com/rss/search?q={urllib.parse.quote(q)}&hl=ko&gl=KR&ceid=KR:ko"
+# 네이버 API 호출 (sort=sim 관련도순으로 변경, display=50으로 대폭 확대)
+for q in queries:
+    encoded_query = urllib.parse.quote(q)
+    # 최신순이 아닌 '관련도(sim)'가 높은 기사를 50개씩 긁어옵니다.
+    url = f"https://openapi.naver.com/v1/search/news.json?query={encoded_query}&display=50&sort=sim"
+    
     try:
-        response = requests.get(url, headers=headers, timeout=5)
+        response = requests.get(url, headers=headers, timeout=10)
+        
         if response.status_code == 200:
-            root = ET.fromstring(response.text)
-            for item in root.findall('.//item')[:5]:
-                title = item.find('title').text
-                link = item.find('link').text
-                pub_date = item.find('pubDate').text
+            data = response.json()
+            
+            for item in data.get('items', []):
+                title = clean_html(item['title'])
+                link = item['originallink'] if item['originallink'] else item['link']
+                # 네이버 API 날짜 포맷 변환 (Mon, 23 Mar 2026 ... -> YYYY.MM.DD)
+                try:
+                    pub_date_obj = datetime.strptime(item['pubDate'], '%a, %d %b %Y %H:%M:%S %z')
+                    pub_date = pub_date_obj.strftime('%Y.%m.%d')
+                except:
+                    pub_date = "최근"
                 
                 if any(bad in title for bad in exclude_keywords): continue
-                if title not in seen_titles:
+                
+                # AI 토큰 초과를 막기 위해 가장 연관도 높은 상위 80개까지만 수집
+                if title not in seen_titles and idx <= 80:
                     seen_titles.add(title)
                     news_context += f"[{idx}] 제목: {title}\n날짜: {pub_date}\n링크: {link}\n\n"
                     idx += 1
-        time.sleep(1)
-    except:
+        else:
+            print(f"네이버 API 에러 ({q}): {response.status_code}")
+    except Exception as e:
+        print(f"[{q}] 통신 에러: {e}")
         continue
 
-# ==========================================
-# 트랙 2: 10대 언론사 직통 RSS (구글 차단 대비 및 최신 시그널 확보)
-# ==========================================
-media_rss = [
-    "https://rss.hankyung.com/feed/economy.xml", "https://rss.hankyung.com/feed/it.xml",
-    "https://www.mk.co.kr/rss/30100041/", "https://www.mk.co.kr/rss/50300009/", 
-    "https://www.yna.co.kr/rss/economy.xml", "https://rss.etnews.com/Section902.xml"
-]
-# 파트너십, 합작, 시리즈 투자 등 초기 딜 시그널 키워드 대거 추가
-deal_keywords = ["인수", "합병", "M&A", "매각", "지분", "투자", "상장", "IPO", "MOU", "제휴", "합작", "조인트벤처", "JV", "시리즈"]
-
-for url in media_rss:
-    try:
-        response = requests.get(url, headers=headers, timeout=5)
-        if response.status_code == 200:
-            root = ET.fromstring(response.text)
-            for item in root.findall('.//item'):
-                title = item.find('title').text
-                link = item.find('link').text
-                pub_date_elem = item.find('pubDate')
-                pub_date = pub_date_elem.text if pub_date_elem is not None else "최근"
-                
-                if title and any(k in title for k in deal_keywords) and not any(bad in title for bad in exclude_keywords):
-                    if title not in seen_titles and idx <= 60:
-                        seen_titles.add(title)
-                        news_context += f"[{idx}] 제목: {title}\n날짜: {pub_date}\n링크: {link}\n\n"
-                        idx += 1
-    except:
-        continue
-
-# ==========================================
-# 3. AI 분석 (유연한 딜 시그널 포착)
-# ==========================================
+# 3. AI 분석 및 요약
 if not news_context.strip():
-    deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 뉴스 데이터를 불러오지 못했습니다. 서버 상태를 확인해 주세요.</h3></div>"
+    deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 뉴스 데이터를 불러오지 못했습니다. 네이버 API 설정을 확인해 주세요.</h3></div>"
 else:
-    # 프롬프트 조건 완화: MOU, JV, 파트너십 등도 포함하도록 지시
     prompt = f"""
     당신은 글로벌 IB의 시니어 M&A 애널리스트입니다. 
-    제공된 뉴스 리스트에서 '반도체, 바이오, 배터리' 섹터의 자본 거래 및 제휴 소식을 요약하세요.
+    제공된 뉴스 리스트에서 '반도체, 바이오, 배터리, 딥테크' 섹터의 자본 거래 소식을 완벽하게 정리하세요.
 
     [뉴스 데이터]
     {news_context}
 
     [작성 규칙]
-    1. 완벽한 인수합병(M&A)이나 상장(IPO)뿐만 아니라, 딜의 전조가 될 수 있는 **'전략적 파트너십(MOU)', '조인트벤처(JV) 설립', '초기 지분 투자 및 시리즈 유치', '펀드 결성'** 소식도 적극적으로 포함하세요.
-    2. 조건에 맞는 기사가 단 하나도 없다면, 절대 빈칸을 출력하지 말고 아래 코드를 출력하세요:
-       <div class='deal-card'><h3 style='color:#718096;'>🎯 오늘 업데이트된 M&A 및 전략적 제휴 소식이 없습니다.</h3></div>
-    3. 조건에 맞는 기사가 있다면 반드시 '반도체', '바이오', '배터리', '기타' 카테고리로 분류하세요.
-    4. 동일 건에 대한 기사는 하나로 묶고 기사 링크를 나열하세요.
-    5. 사족 없이 오직 HTML <div> 카드들만 출력하고, 딜 발생 일자를 헤드라인(<h3>) 앞에 [YYYY.MM.DD] 형식으로 포함하세요.
+    1. 완벽한 인수합병(M&A)뿐 아니라, 전략적 파트너십(MOU), 합작법인(JV), 시드~시리즈 투자, IPO 소식을 모두 포함하세요.
+    2. 반드시 '반도체', '바이오', '배터리', '기타(IT/스타트업)' 카테고리로 분류하세요.
+    3. 동일 건에 대한 기사는 하나로 묶고 기사 링크를 나열하세요.
+    4. 사족 없이 오직 HTML <div> 카드들만 출력하세요.
     
     [출력 형식]
     <div class="deal-card" data-category="카테고리명">
@@ -118,7 +104,7 @@ else:
       </div>
       <ul>
         <li><strong>주체:</strong> [인수/투자/제휴사]</li>
-        <li><strong>상태:</strong> [진행상태 (예: MOU 체결, 시리즈A 유치 등)]</li>
+        <li><strong>상태:</strong> [진행상태 (예: 시리즈A 유치, 경영권 매각 등)]</li>
         <li><strong>링크:</strong> <a href="URL1" target="_blank" class="source-link">기사1</a></li>
       </ul>
       <h4>핵심 요약</h4>
@@ -128,7 +114,6 @@ else:
     
     try:
         model = genai.GenerativeModel(chosen_model_name.replace('models/', ''))
-        
         safety_settings = [
             {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
             {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
@@ -141,14 +126,12 @@ else:
         if hasattr(result, 'text') and result.text.strip():
             deal_content = result.text.replace('```html', '').replace('```', '').strip()
         else:
-            deal_content = "<div class='deal-card'><h3 style='color:#718096;'>🎯 오늘 업데이트된 M&A 및 전략적 제휴 소식이 없습니다.</h3></div>"
+            deal_content = "<div class='deal-card'><h3 style='color:#718096;'>🎯 오늘 업데이트된 주요 M&A 및 전략적 제휴 소식이 없습니다.</h3></div>"
             
     except Exception as e:
         deal_content = f"<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 AI 요약 중 에러가 발생했습니다: {e}</h3></div>"
 
-# ==========================================
-# 4. HTML 생성
-# ==========================================
+# 4. HTML 대시보드 생성
 kst = pytz.timezone('Asia/Seoul')
 today_str = datetime.now(kst).strftime("%Y년 %m월 %d일")
 
