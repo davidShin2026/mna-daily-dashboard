@@ -27,7 +27,6 @@ queries = [
     "스타트업 투자유치", "시리즈A 투자", "시리즈B 투자", "Pre-IPO"
 ]
 
-# 가짜 딜 및 테마주 노이즈 필터링
 exclude_keywords = ["설비", "시설", "연구개발", "R&D", "공장", "증설", "채용", "사옥", "실적", "영업이익", "테마주", "특징주", "급등", "주가"]
 
 news_context = ""
@@ -44,10 +43,8 @@ def clean_html(raw_html):
     cleantext = re.sub(cleanr, '', raw_html)
     return cleantext.replace('&quot;', '"').replace('&apos;', "'").replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
 
-# 네이버 API 호출 (sort=sim 관련도순으로 변경, display=50으로 대폭 확대)
 for q in queries:
     encoded_query = urllib.parse.quote(q)
-    # 최신순이 아닌 '관련도(sim)'가 높은 기사를 50개씩 긁어옵니다.
     url = f"https://openapi.naver.com/v1/search/news.json?query={encoded_query}&display=50&sort=sim"
     
     try:
@@ -59,7 +56,6 @@ for q in queries:
             for item in data.get('items', []):
                 title = clean_html(item['title'])
                 link = item['originallink'] if item['originallink'] else item['link']
-                # 네이버 API 날짜 포맷 변환 (Mon, 23 Mar 2026 ... -> YYYY.MM.DD)
                 try:
                     pub_date_obj = datetime.strptime(item['pubDate'], '%a, %d %b %Y %H:%M:%S %z')
                     pub_date = pub_date_obj.strftime('%Y.%m.%d')
@@ -68,7 +64,6 @@ for q in queries:
                 
                 if any(bad in title for bad in exclude_keywords): continue
                 
-                # AI 토큰 초과를 막기 위해 가장 연관도 높은 상위 80개까지만 수집
                 if title not in seen_titles and idx <= 80:
                     seen_titles.add(title)
                     news_context += f"[{idx}] 제목: {title}\n날짜: {pub_date}\n링크: {link}\n\n"
@@ -79,10 +74,15 @@ for q in queries:
         print(f"[{q}] 통신 에러: {e}")
         continue
 
-# 3. AI 분석 및 요약
+# 3. 오늘 날짜 계산 및 AI 분석
+kst = pytz.timezone('Asia/Seoul')
+today_str = datetime.now(kst).strftime("%Y년 %m월 %d일")
+today_badge_date = datetime.now(kst).strftime("%Y.%m.%d") # NEW 마크 판별을 위한 YYYY.MM.DD 포맷
+
 if not news_context.strip():
     deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 뉴스 데이터를 불러오지 못했습니다. 네이버 API 설정을 확인해 주세요.</h3></div>"
 else:
+    # 프롬프트에 NEW 뱃지 생성 로직(6번 규칙) 추가
     prompt = f"""
     당신은 글로벌 IB의 시니어 M&A 애널리스트입니다. 
     제공된 뉴스 리스트에서 '반도체, 바이오, 배터리, 딥테크' 섹터의 자본 거래 소식을 완벽하게 정리하세요.
@@ -92,9 +92,11 @@ else:
 
     [작성 규칙]
     1. 완벽한 인수합병(M&A)뿐 아니라, 전략적 파트너십(MOU), 합작법인(JV), 시드~시리즈 투자, IPO 소식을 모두 포함하세요.
-    2. 반드시 '반도체', '바이오', '배터리', '기타(IT/스타트업)' 카테고리로 분류하세요.
+    2. 반드시 '반도체', '바이오', '배터리', '기타' 카테고리로 분류하세요.
     3. 동일 건에 대한 기사는 하나로 묶고 기사 링크를 나열하세요.
     4. 사족 없이 오직 HTML <div> 카드들만 출력하세요.
+    5. 기사의 '날짜' 데이터를 확인하여, 딜 발생 일자를 헤드라인(<h3>) 안에 [YYYY.MM.DD] 형식으로 포함하세요.
+    6. **중요:** 오늘 날짜는 [{today_badge_date}] 입니다. 만약 기사의 날짜가 오늘 날짜와 일치한다면, <h3> 태그 안의 날짜 바로 앞에 반드시 `<span class="new-badge">NEW</span>` 마크를 추가하세요. (출력 예시: <h3>🎯 <span class="new-badge">NEW</span> [2026.03.23] 대상 업체명...</h3>)
     
     [출력 형식]
     <div class="deal-card" data-category="카테고리명">
@@ -131,10 +133,7 @@ else:
     except Exception as e:
         deal_content = f"<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 AI 요약 중 에러가 발생했습니다: {e}</h3></div>"
 
-# 4. HTML 대시보드 생성
-kst = pytz.timezone('Asia/Seoul')
-today_str = datetime.now(kst).strftime("%Y년 %m월 %d일")
-
+# 4. HTML 대시보드 생성 (NEW 뱃지 CSS 추가)
 html_template = f"""
 <!DOCTYPE html>
 <html>
@@ -156,6 +155,9 @@ html_template = f"""
         .category-badge {{ background: #ebf8fa; color: #319795; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: bold; margin-right: 15px; border: 1px solid #b2f5ea; }}
         .deal-card h3 {{ margin: 0; font-size: 1.25em; color: #2d3748; }}
         .source-link {{ color: #dd6b20; text-decoration: none; font-weight: bold; margin-right: 8px; background: #feebc8; padding: 3px 8px; border-radius: 4px; display: inline-block; margin-bottom: 4px; }}
+        /* NEW 뱃지 스타일 추가 */
+        .new-badge {{ background-color: #e53e3e; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; font-weight: bold; vertical-align: text-bottom; margin-right: 8px; letter-spacing: 0.5px; }}
+        
         @media (max-width: 600px) {{
             body {{ padding: 15px; }}
             h1 {{ font-size: 1.5em; }}
