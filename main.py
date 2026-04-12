@@ -6,18 +6,14 @@ from datetime import datetime
 import pytz
 import re
 
-# 1. API 키 셋업
+# 1. API 키 및 모델 셋업 (수정됨: 403 에러 방지를 위해 직접 지정)
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 naver_client_id = os.environ.get("NAVER_CLIENT_ID")
 naver_client_secret = os.environ.get("NAVER_CLIENT_SECRET")
 
-try:
-    available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-    target_models = ['models/gemini-1.5-flash', 'models/gemini-1.5-pro']
-    chosen_model_name = next((tm for tm in target_models if tm in available_models), available_models[0])
-except Exception as e:
-    print(f"모델 설정 에러: {e}")
-    raise e
+# 모델을 직접 지정하여 list_models() 권한 이슈를 회피합니다.
+# 2026년 기준 가장 범용적인 'gemini-1.5-flash'를 기본으로 설정합니다.
+CHOSEN_MODEL = 'gemini-1.5-flash'
 
 # 2. 네이버 API 딥 서치 쿼리 (핵심 섹터 + 딜 유형)
 queries = [
@@ -76,13 +72,13 @@ for q in queries:
 
 # 3. 오늘 날짜 계산 및 AI 분석
 kst = pytz.timezone('Asia/Seoul')
-today_str = datetime.now(kst).strftime("%Y년 %m월 %d일")
-today_badge_date = datetime.now(kst).strftime("%Y.%m.%d") # NEW 마크 판별을 위한 YYYY.MM.DD 포맷
+today_now = datetime.now(kst)
+today_str = today_now.strftime("%Y년 %m월 %d일")
+today_badge_date = today_now.strftime("%Y.%m.%d")
 
 if not news_context.strip():
-    deal_content = "<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 뉴스 데이터를 불러오지 못했습니다. 네이버 API 설정을 확인해 주세요.</h3></div>"
+    deal_content = "<div class='deal-card'><h3 style='color:#718096;'>🎯 수집된 최신 M&A 뉴스가 없습니다.</h3></div>"
 else:
-    # 프롬프트에 NEW 뱃지 생성 로직(6번 규칙) 추가
     prompt = f"""
     당신은 글로벌 IB의 시니어 M&A 애널리스트입니다. 
     제공된 뉴스 리스트에서 '반도체, 바이오, 배터리, 딥테크' 섹터의 자본 거래 소식을 완벽하게 정리하세요.
@@ -96,7 +92,7 @@ else:
     3. 동일 건에 대한 기사는 하나로 묶고 기사 링크를 나열하세요.
     4. 사족 없이 오직 HTML <div> 카드들만 출력하세요.
     5. 기사의 '날짜' 데이터를 확인하여, 딜 발생 일자를 헤드라인(<h3>) 안에 [YYYY.MM.DD] 형식으로 포함하세요.
-    6. **중요:** 오늘 날짜는 [{today_badge_date}] 입니다. 만약 기사의 날짜가 오늘 날짜와 일치한다면, <h3> 태그 안의 날짜 바로 앞에 반드시 `<span class="new-badge">NEW</span>` 마크를 추가하세요. (출력 예시: <h3>🎯 <span class="new-badge">NEW</span> [2026.03.23] 대상 업체명...</h3>)
+    6. **중요:** 오늘 날짜는 [{today_badge_date}] 입니다. 만약 기사의 날짜가 오늘 날짜와 일치한다면, <h3> 태그 안의 날짜 바로 앞에 반드시 `<span class="new-badge">NEW</span>` 마크를 추가하세요.
     
     [출력 형식]
     <div class="deal-card" data-category="카테고리명">
@@ -115,25 +111,29 @@ else:
     """
     
     try:
-        model = genai.GenerativeModel(chosen_model_name.replace('models/', ''))
-        safety_settings = [
-            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
-        ]
+        # 모델 객체 생성
+        model = genai.GenerativeModel(CHOSEN_MODEL)
+        
+        # 안전 설정 최적화
+        safety_settings = {
+            "HARM_CATEGORY_HARASSMENT": "BLOCK_NONE",
+            "HARM_CATEGORY_HATE_SPEECH": "BLOCK_NONE",
+            "HARM_CATEGORY_SEXUALLY_EXPLICIT": "BLOCK_NONE",
+            "HARM_CATEGORY_DANGEROUS_CONTENT": "BLOCK_NONE",
+        }
         
         result = model.generate_content(prompt, safety_settings=safety_settings)
         
-        if hasattr(result, 'text') and result.text.strip():
+        if result and result.text:
             deal_content = result.text.replace('```html', '').replace('```', '').strip()
         else:
-            deal_content = "<div class='deal-card'><h3 style='color:#718096;'>🎯 오늘 업데이트된 주요 M&A 및 전략적 제휴 소식이 없습니다.</h3></div>"
+            deal_content = "<div class='deal-card'><h3 style='color:#718096;'>🎯 오늘 업데이트된 주요 M&A 소식이 없습니다.</h3></div>"
             
     except Exception as e:
-        deal_content = f"<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 AI 요약 중 에러가 발생했습니다: {e}</h3></div>"
+        print(f"AI 분석 중 상세 에러: {e}")
+        deal_content = f"<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 AI 요약 중 에러가 발생했습니다.</h3><p style='color:gray; font-size:0.8em;'>상세원인: {str(e)}</p></div>"
 
-# 4. HTML 대시보드 생성 (NEW 뱃지 CSS 추가)
+# 4. HTML 대시보드 생성
 html_template = f"""
 <!DOCTYPE html>
 <html>
@@ -155,12 +155,10 @@ html_template = f"""
         .category-badge {{ background: #ebf8fa; color: #319795; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: bold; margin-right: 15px; border: 1px solid #b2f5ea; }}
         .deal-card h3 {{ margin: 0; font-size: 1.25em; color: #2d3748; }}
         .source-link {{ color: #dd6b20; text-decoration: none; font-weight: bold; margin-right: 8px; background: #feebc8; padding: 3px 8px; border-radius: 4px; display: inline-block; margin-bottom: 4px; }}
-        /* NEW 뱃지 스타일 추가 */
         .new-badge {{ background-color: #e53e3e; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; font-weight: bold; vertical-align: text-bottom; margin-right: 8px; letter-spacing: 0.5px; }}
         
         @media (max-width: 600px) {{
             body {{ padding: 15px; }}
-            h1 {{ font-size: 1.5em; }}
             .isu-title {{ font-size: 1.6em; line-height: 1.2; text-align: center; }}
             .header-container {{ flex-direction: column; }}
             .isu-logo {{ max-height: 35px; margin-right: 0; margin-bottom: 10px; }}
