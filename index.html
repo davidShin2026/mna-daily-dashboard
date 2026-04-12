@@ -19,12 +19,10 @@
         .category-badge { background: #ebf8fa; color: #319795; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: bold; margin-right: 15px; border: 1px solid #b2f5ea; }
         .deal-card h3 { margin: 0; font-size: 1.25em; color: #2d3748; }
         .source-link { color: #dd6b20; text-decoration: none; font-weight: bold; margin-right: 8px; background: #feebc8; padding: 3px 8px; border-radius: 4px; display: inline-block; margin-bottom: 4px; }
-        /* NEW 뱃지 스타일 추가 */
         .new-badge { background-color: #e53e3e; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; font-weight: bold; vertical-align: text-bottom; margin-right: 8px; letter-spacing: 0.5px; }
         
         @media (max-width: 600px) {
             body { padding: 15px; }
-            h1 { font-size: 1.5em; }
             .isu-title { font-size: 1.6em; line-height: 1.2; text-align: center; }
             .header-container { flex-direction: column; }
             .isu-logo { max-height: 35px; margin-right: 0; margin-bottom: 10px; }
@@ -41,7 +39,7 @@
             <img src="ISU CI.png" class="isu-logo" alt="ISU Group Logo">
             <h1 class="isu-title">M&A News for ISU OI Team</h1>
         </div>
-        <p style="text-align:center; font-weight:bold; color:#718096; margin-bottom: 25px;">업데이트: 2026년 04월 12일</p>
+        <p style="text-align:center; font-weight:bold; color:#718096; margin-bottom: 25px;">업데이트: 2026년 04월 13일</p>
         
         <div class="filter-container">
             <button class="filter-btn active" onclick="filterDeals('전체')">전체보기</button>
@@ -51,7 +49,7 @@
             <button class="filter-btn" onclick="filterDeals('기타')">기타</button>
         </div>
         
-        <div id="deal-list"><div class='deal-card'><h3 style='color:#e53e3e;'>🎯 AI 요약 중 에러가 발생했습니다: 403 Your project has been denied access. Please contact support.</h3></div></div>
+        <div id="deal-list"><div class='deal-card'><h3 style='color:#e53e3e;'>🎯 AI 요약 중 에러가 발생했습니다.</h3><p style='color:gray; font-size:0.8em;'>상세원인: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.</p></div></div>
     </div>
     <script>
         function filterDeals(cat) {
