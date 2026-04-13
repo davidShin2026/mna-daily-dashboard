@@ -47,7 +47,7 @@ today_str = datetime.now(kst).strftime("%Y년 %m월 %d일")
 today_badge = datetime.now(kst).strftime("%Y.%m.%d")
 
 # 2026년 기준 가장 안정적인 v1 경로와 모델을 사용합니다.
-GEMINI_URL = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+GEMINI_URL = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_API_KEY}"
 
 prompt = f"""
 당신은 글로벌 IB의 시니어 M&A 애널리스트입니다. 아래 뉴스에서 '반도체, 바이오, 배터리, 기타' 섹터 자본 거래를 정리하세요.
