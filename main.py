@@ -6,14 +6,22 @@ from datetime import datetime
 import pytz
 import re
 
-# 1. API 키 및 모델 셋업 (수정됨: 403 에러 방지를 위해 직접 지정)
+# 1. API 키 및 모델 셋업 수정
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-naver_client_id = os.environ.get("NAVER_CLIENT_ID")
-naver_client_secret = os.environ.get("NAVER_CLIENT_SECRET")
 
-# 모델을 직접 지정하여 list_models() 권한 이슈를 회피합니다.
-# 2026년 기준 가장 범용적인 'gemini-1.5-flash'를 기본으로 설정합니다.
-CHOSEN_MODEL = 'gemini-1.5-flash'
+# 'gemini-1.5-flash' 대신 'gemini-1.5-flash-latest'를 시도합니다.
+# 만약 계속 에러가 난다면 'gemini-1.5-pro-latest'로 변경해 보세요.
+CHOSEN_MODEL = 'gemini-1.5-flash-latest' 
+
+try:
+    # 모델 객체 생성 시 명시적으로 버전을 지정하지 않고 라이브러리 기본값에 맡깁니다.
+    model = genai.GenerativeModel(CHOSEN_MODEL)
+    print(f"모델 설정 시도: {CHOSEN_MODEL}")
+except Exception as e:
+    print(f"모델 설정 에러: {e}")
+    # 예비 모델로 전환
+    CHOSEN_MODEL = 'gemini-1.5-pro'
+    model = genai.GenerativeModel(CHOSEN_MODEL)
 
 # 2. 네이버 API 딥 서치 쿼리 (핵심 섹터 + 딜 유형)
 queries = [
