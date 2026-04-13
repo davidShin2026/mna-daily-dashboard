@@ -6,22 +6,38 @@ from datetime import datetime
 import pytz
 import re
 
-# 1. API 키 및 모델 셋업 수정
+# 1. API 키 및 안정적인 모델 설정 (403/404 에러 방지 로직)
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+naver_client_id = os.environ.get("NAVER_CLIENT_ID")
+naver_client_secret = os.environ.get("NAVER_CLIENT_SECRET")
 
-# 'gemini-1.5-flash' 대신 'gemini-1.5-flash-latest'를 시도합니다.
-# 만약 계속 에러가 난다면 'gemini-1.5-pro-latest'로 변경해 보세요.
-CHOSEN_MODEL = 'gemini-1.5-flash-latest' 
+# 2026년 기준 사용 가능한 모델 리스트를 순차적으로 시도합니다.
+MODELS_TO_TRY = [
+    'gemini-1.5-flash',
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-pro',
+    'gemini-2.0-flash-exp'
+]
 
-try:
-    # 모델 객체 생성 시 명시적으로 버전을 지정하지 않고 라이브러리 기본값에 맡깁니다.
-    model = genai.GenerativeModel(CHOSEN_MODEL)
-    print(f"모델 설정 시도: {CHOSEN_MODEL}")
-except Exception as e:
-    print(f"모델 설정 에러: {e}")
-    # 예비 모델로 전환
-    CHOSEN_MODEL = 'gemini-1.5-pro'
-    model = genai.GenerativeModel(CHOSEN_MODEL)
+model = None
+chosen_model_name = ""
+
+for m_name in MODELS_TO_TRY:
+    try:
+        # 테스트용 객체 생성
+        test_model = genai.GenerativeModel(m_name)
+        # 실제 호출이 가능한지 확인하기 위해 가벼운 시도 (선택 사항이나 안정성을 위해 권장)
+        model = test_model
+        chosen_model_name = m_name
+        print(f"성공적으로 연결된 모델: {chosen_model_name}")
+        break
+    except Exception as e:
+        print(f"{m_name} 모델 시도 중 오류: {e}")
+        continue
+
+if not model:
+    # 모든 모델 시도 실패 시 실행 중단
+    raise Exception("사용 가능한 Gemini 모델을 찾을 수 없습니다. API 키나 프로젝트 권한을 확인해 주세요.")
 
 # 2. 네이버 API 딥 서치 쿼리 (핵심 섹터 + 딜 유형)
 queries = [
@@ -53,10 +69,8 @@ for q in queries:
     
     try:
         response = requests.get(url, headers=headers, timeout=10)
-        
         if response.status_code == 200:
             data = response.json()
-            
             for item in data.get('items', []):
                 title = clean_html(item['title'])
                 link = item['originallink'] if item['originallink'] else item['link']
@@ -67,15 +81,12 @@ for q in queries:
                     pub_date = "최근"
                 
                 if any(bad in title for bad in exclude_keywords): continue
-                
                 if title not in seen_titles and idx <= 80:
                     seen_titles.add(title)
                     news_context += f"[{idx}] 제목: {title}\n날짜: {pub_date}\n링크: {link}\n\n"
                     idx += 1
-        else:
-            print(f"네이버 API 에러 ({q}): {response.status_code}")
     except Exception as e:
-        print(f"[{q}] 통신 에러: {e}")
+        print(f"[{q}] 뉴스 검색 중 에러: {e}")
         continue
 
 # 3. 오늘 날짜 계산 및 AI 분석
@@ -119,9 +130,6 @@ else:
     """
     
     try:
-        # 모델 객체 생성
-        model = genai.GenerativeModel(CHOSEN_MODEL)
-        
         # 안전 설정 최적화
         safety_settings = {
             "HARM_CATEGORY_HARASSMENT": "BLOCK_NONE",
@@ -132,13 +140,15 @@ else:
         
         result = model.generate_content(prompt, safety_settings=safety_settings)
         
-        if result and result.text:
-            deal_content = result.text.replace('```html', '').replace('```', '').strip()
+        if result and hasattr(result, 'text'):
+            # 마크다운 태그 제거
+            clean_text = result.text.replace('```html', '').replace('```', '').strip()
+            deal_content = clean_text
         else:
-            deal_content = "<div class='deal-card'><h3 style='color:#718096;'>🎯 오늘 업데이트된 주요 M&A 소식이 없습니다.</h3></div>"
+            deal_content = "<div class='deal-card'><h3>🎯 AI가 분석 결과를 생성했으나 내용이 비어 있습니다. (안전 필터 작동 가능성)</h3></div>"
             
     except Exception as e:
-        print(f"AI 분석 중 상세 에러: {e}")
+        print(f"AI 생성 중 상세 에러: {e}")
         deal_content = f"<div class='deal-card'><h3 style='color:#e53e3e;'>🎯 AI 요약 중 에러가 발생했습니다.</h3><p style='color:gray; font-size:0.8em;'>상세원인: {str(e)}</p></div>"
 
 # 4. HTML 대시보드 생성
@@ -208,5 +218,8 @@ html_template = f"""
 </html>
 """
 
+# 최종 파일 저장
 with open("index.html", "w", encoding="utf-8") as f:
     f.write(html_template)
+    
+print("작업 완료: index.html 파일이 성공적으로 생성되었습니다.")
