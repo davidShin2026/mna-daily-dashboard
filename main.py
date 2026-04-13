@@ -41,13 +41,14 @@ for q in queries:
                     idx += 1
     except: continue
 
-# 3. Gemini REST API 호출 (SDK 미사용 방식)
+# 3. Gemini API 호출 (복수 모델 자동 시도 로직)
 kst = pytz.timezone('Asia/Seoul')
 today_str = datetime.now(kst).strftime("%Y년 %m월 %d일")
 today_badge = datetime.now(kst).strftime("%Y.%m.%d")
 
-# 2026년 기준 가장 안정적인 v1 경로와 모델을 사용합니다.
-GEMINI_URL = f"https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash-latest:generateContent?key={GEMINI_API_KEY}"
+# 시도해볼 모델 명칭 리스트 (가장 표준적인 이름들입니다)
+MODELS_TO_TRY = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash"]
+deal_content = ""
 
 prompt = f"""
 당신은 글로벌 IB의 시니어 M&A 애널리스트입니다. 아래 뉴스에서 '반도체, 바이오, 배터리, 기타' 섹터 자본 거래를 정리하세요.
@@ -58,30 +59,36 @@ prompt = f"""
 {news_context}
 """
 
-payload = {
-    "contents": [{"parts": [{"text": prompt}]}],
-    "safetySettings": [
-        {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-        {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"}
-    ]
-}
-
-try:
-    response = requests.post(GEMINI_URL, json=payload, timeout=30)
-    response_data = response.json()
+# 모델을 하나씩 돌아가며 호출해봅니다.
+for model_id in MODELS_TO_TRY:
+    # v1과 v1beta 모두 대응할 수 있도록 v1을 우선 시도합니다.
+    url = f"https://generativelanguage.googleapis.com/v1/models/{model_id}:generateContent?key={GEMINI_API_KEY}"
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "safetySettings": [
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"}
+        ]
+    }
     
-    if response.status_code == 200:
-        # 응답 구조에서 텍스트 추출
-        deal_content = response_data['candidates'][0]['content']['parts'][0]['text']
-        deal_content = deal_content.replace('```html', '').replace('```', '').strip()
-    else:
-        # 에러 발생 시 상세 정보 출력
-        error_msg = response_data.get('error', {}).get('message', 'Unknown Error')
-        deal_content = f"<div class='deal-card'><h3>🚨 API 호출 에러</h3><p>{error_msg}</p></div>"
-except Exception as e:
-    deal_content = f"<div class='deal-card'><h3>🚨 시스템 에러</h3><p>{str(e)}</p></div>"
+    try:
+        response = requests.post(url, json=payload, timeout=30)
+        if response.status_code == 200:
+            response_data = response.json()
+            deal_content = response_data['candidates'][0]['content']['parts'][0]['text']
+            deal_content = deal_content.replace('```html', '').replace('```', '').strip()
+            print(f"✅ 성공한 모델: {model_id}")
+            break # 성공하면 반복 중단
+        else:
+            print(f"❌ {model_id} 실패 (코드 {response.status_code})")
+    except Exception as e:
+        print(f"⚠️ {model_id} 연결 오류: {e}")
+        continue
 
-# 4. HTML 대시보드 생성 (CSS 포함)
+if not deal_content:
+    deal_content = f"<div class='deal-card'><h3>🚨 모든 AI 모델 호출에 실패했습니다.</h3><p>API 키 권한이나 구글 클라우드 설정을 점검해 주세요.</p></div>"
+
+# 4. HTML 대시보드 생성
 html_template = f"""
 <!DOCTYPE html>
 <html lang="ko">
