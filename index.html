@@ -1,6 +1,6 @@
 
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
     <title>M&A News for ISU OI Team</title>
@@ -9,19 +9,21 @@
         .container { max-width: 900px; margin: auto; }
         .header-container { text-align: center; border-bottom: 2px solid #1a365d; padding-bottom: 15px; margin-bottom: 25px; }
         .isu-title { font-size: 2.3em; color: #1a365d; }
-        .filter-btn { background: #e2e8f0; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-weight: bold; margin: 5px; }
         .deal-card { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; border-left: 5px solid #2b6cb0; }
         .new-badge { background-color: #e53e3e; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; margin-right: 8px; }
-        .source-link { color: #dd6b20; font-weight: bold; text-decoration: none; background: #feebc8; padding: 2px 6px; border-radius: 4px; }
+        .category-badge { background: #ebf8fa; color: #319795; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: bold; margin-right: 15px; border: 1px solid #b2f5ea; }
+        .source-link { color: #dd6b20; font-weight: bold; text-decoration: none; background: #feebc8; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 5px; }
+        ul { padding-left: 20px; }
+        li { margin-bottom: 8px; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header-container">
             <h1 class="isu-title">M&A News for ISU OI Team</h1>
-            <p>업데이트: 2026년 04월 13일</p>
+            <p style="color:#718096; font-weight:bold;">업데이트: 2026년 04월 13일</p>
         </div>
-        <div id="deal-list"><div class='deal-card'><h3>🚨 모든 AI 모델을 호출할 수 없습니다.</h3><p>API 키가 만료되었거나 프로젝트 권한 설정을 다시 확인해 주세요.</p></div></div>
+        <div id="deal-list"><div class='deal-card'><h3>🚨 API 호출 에러</h3><p>models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.</p></div></div>
     </div>
 </body>
 </html>
