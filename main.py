@@ -37,16 +37,16 @@ for q in queries:
                     idx += 1
     except: continue
 
-# 3. Gemini API 호출 (자동 복구 로직 적용)
+# 3. Gemini API 호출 (2.0 모델 포함 전략)
 kst = pytz.timezone('Asia/Seoul')
 today_str = datetime.now(kst).strftime("%Y년 %m월 %d일")
 today_badge = datetime.now(kst).strftime("%Y.%m.%d")
 
-# 시도할 [버전, 모델명] 조합 리스트입니다.
+# 어제 유일하게 '인식'되었던 gemini-2.0-flash를 1순위에 배치합니다.
 STRATEGIES = [
-    ("v1beta", "gemini-1.5-flash"), 
-    ("v1", "gemini-1.5-flash"),
-    ("v1beta", "gemini-pro")
+    ("v1beta", "gemini-2.0-flash"), 
+    ("v1beta", "gemini-1.5-flash"),
+    ("v1", "gemini-1.5-flash")
 ]
 
 deal_content = ""
@@ -61,18 +61,19 @@ for version, model_id in STRATEGIES:
         if response.status_code == 200:
             res_json = response.json()
             deal_content = res_json['candidates'][0]['content']['parts'][0]['text']
-            deal_content = deal_content.replace('```html', '').replace('```', '').strip()
+            # 불필요한 마크다운 기호 제거
+            deal_content = re.sub(r'```html|```', '', deal_content).strip()
             print(f"✅ {version}/{model_id} 호출 성공!")
             break
         else:
             print(f"❌ {version}/{model_id} 실패 (코드 {response.status_code})")
-            time.sleep(1)
+            time.sleep(2) # 429 방지를 위해 잠깐 휴식
     except: continue
 
 if not deal_content:
-    deal_content = "<div class='deal-card'><h3>🚨 시스템 점검 안내</h3><p>구글 API와의 연결 규격이 조정 중입니다. 잠시 후 다시 가동될 예정입니다.</p></div>"
+    deal_content = "<div class='deal-card'><h3>🚨 데이터 수집 완료 후 요약 대기 중</h3><p>현재 구글 API 호출이 지연되고 있습니다. 잠시 후 [Actions]에서 다시 실행해 주세요.</p></div>"
 
-# 4. HTML 대시보드 생성
+# 4. HTML 대시보드 생성 (세련된 스타일 추가)
 html_template = f"""
 <!DOCTYPE html>
 <html lang="ko">
@@ -83,7 +84,8 @@ html_template = f"""
         body {{ font-family: 'Malgun Gothic', sans-serif; background-color: #f4f7f6; padding: 20px; color: #2d3748; }}
         .container {{ max-width: 900px; margin: auto; }}
         .header {{ text-align: center; border-bottom: 2px solid #1a365d; padding-bottom: 15px; margin-bottom: 25px; }}
-        .deal-card {{ background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; border-left: 5px solid #2b6cb0; }}
+        .deal-card {{ background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; border-left: 5px solid #2b6cb0; line-height: 1.6; }}
+        h3 {{ color: #2b6cb0; margin-top: 0; }}
     </style>
 </head>
 <body>
