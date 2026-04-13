@@ -30,7 +30,6 @@ for q in queries:
         if res.status_code == 200:
             for item in res.json().get('items', []):
                 title = clean_html(item['title'])
-                link = item['originallink'] or item['link']
                 if any(bad in title for bad in exclude_keywords): continue
                 if title not in seen_titles and idx <= 40:
                     seen_titles.add(title)
@@ -38,37 +37,40 @@ for q in queries:
                     idx += 1
     except: continue
 
-# 3. Gemini API 호출 (최적화된 경로와 모델명)
+# 3. Gemini API 호출 (자동 복구 로직 적용)
 kst = pytz.timezone('Asia/Seoul')
 today_str = datetime.now(kst).strftime("%Y년 %m월 %d일")
 today_badge = datetime.now(kst).strftime("%Y.%m.%d")
 
-# 429 에러를 피하기 위해 가장 가벼운 모델 하나만 집중 공략합니다.
-target_model = "gemini-1.5-flash-latest" 
-deal_content = ""
+# 시도할 [버전, 모델명] 조합 리스트입니다.
+STRATEGIES = [
+    ("v1beta", "gemini-1.5-flash"), 
+    ("v1", "gemini-1.5-flash"),
+    ("v1beta", "gemini-pro")
+]
 
+deal_content = ""
 prompt = f"당신은 IB 애널리스트입니다. 아래 뉴스에서 M&A 및 투자 관련 내용을 섹터별로 요약하세요. HTML <div> 카드 형식으로만 출력하고 사족은 생략하세요. 오늘날짜: {today_badge}\n\n뉴스:\n{news_context}"
 
-# v1beta 경로로 접속합니다.
-url = f"https://generativelanguage.googleapis.com/v1beta/models/{target_model}:generateContent?key={GEMINI_API_KEY}"
-payload = {"contents": [{"parts": [{"text": prompt}]}]}
-
-try:
-    # 구글 서버에 '똑똑' 노크하기 전 3초만 쉽니다. (429 방지)
-    time.sleep(3)
-    response = requests.post(url, json=payload, timeout=30)
+for version, model_id in STRATEGIES:
+    url = f"https://generativelanguage.googleapis.com/{version}/models/{model_id}:generateContent?key={GEMINI_API_KEY}"
+    payload = {"contents": [{"parts": [{"text": prompt}]}]}
     
-    if response.status_code == 200:
-        res_json = response.json()
-        deal_content = res_json['candidates'][0]['content']['parts'][0]['text']
-        deal_content = deal_content.replace('```html', '').replace('```', '').strip()
-    elif response.status_code == 429:
-        deal_content = "<div class='deal-card'><h3>🚨 구글 서버가 너무 바쁩니다</h3><p>현재 David님의 API 호출 한도가 일시적으로 초과되었습니다. <strong>1시간 뒤에</strong> 자동으로 다시 시도됩니다.</p></div>"
-    else:
-        error_msg = response.json().get('error', {}).get('message', 'Unknown Error')
-        deal_content = f"<div class='deal-card'><h3>🚨 호출 실패 (코드 {response.status_code})</h3><p>{error_msg}</p></div>"
-except Exception as e:
-    deal_content = f"<div class='deal-card'><h3>🚨 시스템 오류</h3><p>{str(e)}</p></div>"
+    try:
+        response = requests.post(url, json=payload, timeout=30)
+        if response.status_code == 200:
+            res_json = response.json()
+            deal_content = res_json['candidates'][0]['content']['parts'][0]['text']
+            deal_content = deal_content.replace('```html', '').replace('```', '').strip()
+            print(f"✅ {version}/{model_id} 호출 성공!")
+            break
+        else:
+            print(f"❌ {version}/{model_id} 실패 (코드 {response.status_code})")
+            time.sleep(1)
+    except: continue
+
+if not deal_content:
+    deal_content = "<div class='deal-card'><h3>🚨 시스템 점검 안내</h3><p>구글 API와의 연결 규격이 조정 중입니다. 잠시 후 다시 가동될 예정입니다.</p></div>"
 
 # 4. HTML 대시보드 생성
 html_template = f"""
