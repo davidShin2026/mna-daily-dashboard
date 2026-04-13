@@ -38,19 +38,18 @@ for q in queries:
                     idx += 1
     except: continue
 
-# 3. Gemini API 호출 (v1beta 경로 사용 및 에러 제어)
+# 3. Gemini API 호출 (2.0 모델 우선 순위 적용)
 kst = pytz.timezone('Asia/Seoul')
 today_str = datetime.now(kst).strftime("%Y년 %m월 %d일")
 today_badge = datetime.now(kst).strftime("%Y.%m.%d")
 
-# 2026년 무료 티어에서 가장 응답이 빠른 모델 순서입니다.
-MODELS_TO_TRY = ["gemini-1.5-flash", "gemini-1.5-pro"]
+# 429 에러가 났던(즉, 인식에 성공했던) 모델을 1순위로 배치합니다.
+MODELS_TO_TRY = ["gemini-2.0-flash", "gemini-1.5-flash"]
 deal_content = ""
 
 prompt = f"당신은 IB 애널리스트입니다. 아래 뉴스에서 M&A 및 투자 관련 내용을 섹터별로 요약하세요. HTML <div> 카드 형식으로만 출력하고 사족은 생략하세요. 오늘날짜: {today_badge}\n\n뉴스:\n{news_context}"
 
 for model_id in MODELS_TO_TRY:
-    # 404 에러 방지를 위해 v1beta 경로를 사용합니다.
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent?key={GEMINI_API_KEY}"
     payload = {"contents": [{"parts": [{"text": prompt}]}]}
     
@@ -60,12 +59,12 @@ for model_id in MODELS_TO_TRY:
             res_json = response.json()
             deal_content = res_json['candidates'][0]['content']['parts'][0]['text']
             deal_content = deal_content.replace('```html', '').replace('```', '').strip()
+            print(f"✅ {model_id} 호출 성공!")
             break
-        elif response.status_code == 429:
-            print(f"⚠️ {model_id}가 너무 바쁩니다. 잠시 대기합니다.")
-            time.sleep(5) # 429 에러 시 5초 대기 후 다음 모델 시도
         else:
-            print(f"❌ {model_id} 호출 실패 (코드 {response.status_code})")
+            print(f"❌ {model_id} 실패 (코드 {response.status_code})")
+            if response.status_code == 429:
+                time.sleep(2) # 잠시 대기
     except: continue
 
 if not deal_content:
@@ -83,7 +82,6 @@ html_template = f"""
         .container {{ max-width: 900px; margin: auto; }}
         .header {{ text-align: center; border-bottom: 2px solid #1a365d; padding-bottom: 15px; margin-bottom: 25px; }}
         .deal-card {{ background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; border-left: 5px solid #2b6cb0; }}
-        .new-badge {{ background: #e53e3e; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; }}
     </style>
 </head>
 <body>
