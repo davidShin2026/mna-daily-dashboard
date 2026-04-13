@@ -19,7 +19,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -U google-generativeai requests pytz # 라이브러리를 최신버전으로 강제 업데이트
+          pip install --upgrade google-generativeai requests pytz
 
       - name: Run script
         env:
