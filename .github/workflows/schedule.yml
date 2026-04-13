@@ -2,24 +2,28 @@ name: M&A News Update
 
 on:
   schedule:
-    - cron: '0 0 * * *' # 매일 아침 9시 (KST) 실행
+    - cron: '0 0 * * *' # 매일 오전 9시 (KST)
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    # 로봇에게 파일을 수정하고 저장할 권한을 명시적으로 부여합니다.
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout
-        uses: actions/checkout@v4 # v2/v3에서 v4로 업데이트
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5 # v4에서 v5로 업데이트
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
       - name: Install dependencies
         run: |
-          pip install --upgrade google-generativeai requests pytz
+          pip install --upgrade requests pytz
 
       - name: Run script
         env:
@@ -28,9 +32,11 @@ jobs:
           NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
         run: python main.py
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: .
-          publish_files: 'index.html'
+      # 핵심: 생성된 index.html을 저장소에 직접 커밋하고 푸시합니다.
+      - name: Commit and Push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Update M&A news dashboard (automated)" || echo "No changes to commit"
+          git push
