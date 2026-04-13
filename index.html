@@ -1,0 +1,64 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>M&A News for ISU OI Team</title>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f7f6; padding: 20px; }
+        .container { max-width: 900px; margin: auto; }
+        .header-container { display: flex; align-items: center; justify-content: center; margin-bottom: 25px; border-bottom: 2px solid #1a365d; padding-bottom: 15px; }
+        .isu-logo { max-height: 45px; margin-right: 18px; vertical-align: middle; }
+        .isu-title { margin: 0; font-size: 2.3em; color: #1a365d; }
+        .filter-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 30px; }
+        .filter-btn { background: #e2e8f0; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-weight: bold; font-size: 1em; transition: 0.2s; }
+        .filter-btn.active { background: #1a365d; color: white; }
+        .deal-card { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; border-left: 5px solid #2b6cb0; line-height: 1.6; }
+        .card-header { display: flex; align-items: center; border-bottom: 2px solid #edf2f7; padding-bottom: 12px; margin-bottom: 15px; }
+        .category-badge { background: #ebf8fa; color: #319795; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: bold; margin-right: 15px; border: 1px solid #b2f5ea; }
+        .deal-card h3 { margin: 0; font-size: 1.25em; color: #2d3748; }
+        .source-link { color: #dd6b20; text-decoration: none; font-weight: bold; margin-right: 8px; background: #feebc8; padding: 3px 8px; border-radius: 4px; display: inline-block; margin-bottom: 4px; }
+        .new-badge { background-color: #e53e3e; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; font-weight: bold; vertical-align: text-bottom; margin-right: 8px; letter-spacing: 0.5px; }
+        
+        @media (max-width: 600px) {
+            body { padding: 15px; }
+            .isu-title { font-size: 1.6em; line-height: 1.2; text-align: center; }
+            .header-container { flex-direction: column; }
+            .isu-logo { max-height: 35px; margin-right: 0; margin-bottom: 10px; }
+            .filter-btn { padding: 12px 16px; font-size: 1.1em; flex-grow: 1; text-align: center; }
+            .deal-card { padding: 15px; }
+            .category-badge { padding: 3px 8px; font-size: 0.8em; margin-right: 10px; }
+            .deal-card h3 { font-size: 1.15em; line-height: 1.3; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-container">
+            <img src="ISU CI.png" class="isu-logo" alt="ISU Group Logo">
+            <h1 class="isu-title">M&A News for ISU OI Team</h1>
+        </div>
+        <p style="text-align:center; font-weight:bold; color:#718096; margin-bottom: 25px;">업데이트: 2026년 04월 13일</p>
+        
+        <div class="filter-container">
+            <button class="filter-btn active" onclick="filterDeals('전체')">전체보기</button>
+            <button class="filter-btn" onclick="filterDeals('반도체')">반도체</button>
+            <button class="filter-btn" onclick="filterDeals('바이오')">바이오</button>
+            <button class="filter-btn" onclick="filterDeals('배터리')">배터리</button>
+            <button class="filter-btn" onclick="filterDeals('기타')">기타</button>
+        </div>
+        
+        <div id="deal-list"><div class='deal-card'><h3 style='color:#e53e3e;'>🎯 AI 요약 중 에러가 발생했습니다.</h3><p style='color:gray; font-size:0.8em;'>상세원인: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.</p></div></div>
+    </div>
+    <script>
+        function filterDeals(cat) {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            document.querySelectorAll('.deal-card').forEach(c => {
+                c.style.display = (cat === '전체' || c.getAttribute('data-category') === cat) ? 'block' : 'none';
+            });
+        }
+    </script>
+</body>
+</html>
